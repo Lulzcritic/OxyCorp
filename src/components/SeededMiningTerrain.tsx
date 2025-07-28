@@ -37,27 +37,21 @@ export default function MartianTerrain() {
     const noise2D = createNoise2D(random);
 
     const pos = geo.attributes.position;
-    const center = new THREE.Vector2(0, 0);
-    const craterRadius = 50;
 
     for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const y = pos.getY(i);
-        const point = new THREE.Vector2(x, y);
-        const distToCenter = point.distanceTo(center);
 
         let elevation = 0;
 
-        const falloff = (distToCenter - craterRadius) / (size * 0.5 - craterRadius);
         const mountainNoise =
             noise2D(x * 0.02, y * 0.02) * 4 +
             noise2D(x * 0.1, y * 0.1) * 1.2;
 
-        const valleyShape = -Math.pow(falloff, 1.5) * 2;
-        elevation = mountainNoise + valleyShape;
+
         
 
-        pos.setZ(i, elevation);
+        pos.setZ(i, mountainNoise);
     }
 
     geo.computeVertexNormals();
