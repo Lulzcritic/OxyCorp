@@ -1,47 +1,54 @@
-// game/useCharacterControls.ts
 import { useFrame, useThree } from '@react-three/fiber';
 import { useControlStore } from './useControlStore';
 import * as THREE from 'three';
 
 const keys: Record<string, boolean> = {};
-window.addEventListener('keydown', e => (keys[e.code] = true));
-window.addEventListener('keyup', e => (keys[e.code] = false));
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => (keys[e.code] = true));
+  window.addEventListener('keyup',   (e) => (keys[e.code] = false));
+}
 
+/**
+ * Met à jour:
+ *  - moving (bool)
+ *  - axes forward/right (caméra-relatifs)
+ *  - run (Shift)
+ * Ne modifie plus la position: la physique (Rapier) s'en charge dans Character.tsx
+ */
 export function useCharacterControls(ref: React.RefObject<THREE.Object3D>) {
   const setMoving = useControlStore((s) => s.setMoving);
+  const setAxes   = useControlStore((s) => s.setAxes);
+  const setRun    = useControlStore((s) => s.setRun);
   const { camera } = useThree();
 
-  useFrame((_, delta) => {
+  const camDir   = new THREE.Vector3();
+  const camRight = new THREE.Vector3();
+  const moveDir  = new THREE.Vector3();
+
+  useFrame(() => {
     if (!ref.current) return;
 
-    const dir = new THREE.Vector3(
-      (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0),
-      0,
-      (keys['KeyS'] ? 1 : 0) - (keys['KeyW'] ? 1 : 0)
-    );
+    // WASD -> vecteur local "input"
+    const inputX = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
+    const inputZ = (keys['KeyS'] ? 1 : 0) - (keys['KeyW'] ? 1 : 0);
+    const hasInput = inputX !== 0 || inputZ !== 0;
 
-    const isMoving = dir.lengthSq() > 0;
-    setMoving(isMoving);
-    if (!isMoving) return;
-
-    // Transformer le vecteur directionnel selon la rotation de la caméra
-    const camDir = new THREE.Vector3();
+    // Direction caméra (au sol)
     camera.getWorldDirection(camDir);
-    camDir.y = 0;
-    camDir.normalize();
+    camDir.y = 0; camDir.normalize();
+    camRight.copy(camDir).cross(new THREE.Vector3(0, 1, 0)).normalize();
 
-    const camRight = new THREE.Vector3().crossVectors(camDir, new THREE.Vector3(0, 1, 0));
+    // Vecteur de déplacement caméra‑relatif (non normalisé)
+    moveDir.set(0,0,0)
+      .addScaledVector(camDir, -inputZ)    // W -> avant (positive forward)
+      .addScaledVector(camRight,  inputX); // D -> droite (positive right)
 
-    const moveDir = new THREE.Vector3();
-    moveDir.addScaledVector(camDir, -dir.z); // caméra avant/arrière
-    moveDir.addScaledVector(camRight, dir.x); // caméra gauche/droite
-    moveDir.normalize();
+    // Axes dans le repère caméra : forward = proj(moveDir, camDir), right = proj(moveDir, camRight)
+    const forward = hasInput ? moveDir.dot(camDir)   / moveDir.length() : 0;
+    const right   = hasInput ? moveDir.dot(camRight) / moveDir.length() : 0;
 
-    const speed = 5;
-    ref.current.position.add(moveDir.multiplyScalar(speed * delta));
-
-    // Tourner le perso dans la direction de déplacement
-    const angle = Math.atan2(moveDir.x, moveDir.z);
-    ref.current.rotation.y = angle;
+    setAxes({ forward: isFinite(forward) ? forward : 0, right: isFinite(right) ? right : 0 });
+    setMoving(hasInput);
+    setRun(!!keys['ShiftLeft']); // sprint
   });
 }

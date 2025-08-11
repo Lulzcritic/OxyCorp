@@ -1,10 +1,11 @@
-// components/MartianTerrain.tsx
+// components/PlayerBase.tsx
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { useTexture } from '@react-three/drei';
+import { RigidBody } from '@react-three/rapier';
 
-export default function MartianTerrain() {
+export default function PlayerBase() {
   const textures = useTexture({
     map: '/textures/rocky_trail_02_diff_1k.jpg',
     normalMap: '/textures/generated_normal_map_from_disp.png'
@@ -72,11 +73,13 @@ export default function MartianTerrain() {
 
 
   return (
-    <mesh geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow>
-      <meshStandardMaterial
-        {...textures}
-        roughness={1}
-      />
-    </mesh>
+    <RigidBody type="fixed" colliders="trimesh">
+      <mesh geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow>
+        <meshStandardMaterial
+          {...textures}
+          roughness={1}
+        />
+      </mesh>
+    </RigidBody>
   );
 }
