@@ -341,3 +341,25 @@ entrypoint = "./functions/mineRock/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/mineRock/*.html" ]
+
+[functions.enterTown]
+enabled = true
+verify_jwt = true
+import_map = "./functions/enterTown/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/enterTown/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/enterTown/*.html" ]
+
+[functions.leaveTown]
+enabled = true
+verify_jwt = true
+import_map = "./functions/leaveTown/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/leaveTown/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/leaveTown/*.html" ]

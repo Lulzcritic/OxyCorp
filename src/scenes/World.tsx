@@ -5,91 +5,85 @@ import ThirdPersonCamera from '../components/ThirdPersonCamera';
 import { Group } from 'three';
 import MartianTerrain from '../components/PlayerBase';
 import Bunker from '../assets/models/Bunker';
-import Vehicle from '../components/Vehicle';
+import Vehicle from '../assets/models/Vehicle';
 import MiningParcel from '../components/MiningParcel';
 import { Physics, RigidBody } from '@react-three/rapier';
+import { supabase } from '../../supabase/client';
 
 export default function World() {
-  const [currentZone, setCurrentZone] = useState<{ type: 'base' | 'mining'; seed?: string }>({
-    type: 'base',
-  });
+  const [currentZone, setCurrentZone] = useState<
+    { type: 'base' | 'mining' | 'town'; seed?: string; spawn?: { x:number,y:number,z:number, ry:number } }
+  >({ type: 'base' });
 
-  const handleMining = async () => {
+  const charRef = useRef<Group>(null);
+
+  const goMining = async () => {
     const seed = Math.floor(Math.random() * 1000);
     setCurrentZone({ type: 'mining', seed: seed.toString() });
   };
 
-  const charRef = useRef<Group>(null);
+  const goTown = async () => {
+    const { data, error } = await supabase.functions.invoke('enterTown', { body: {} });
+    if (!error && data?.spawn) {
+      setCurrentZone({ type: 'town', spawn: data.spawn });
+    } else {
+      // fallback sans backend
+      setCurrentZone({ type: 'town', spawn: { x: 0, y: 0, z: 0, ry: 0 } });
+    }
+  };
+
+  const vehicleActions = [
+    { key: 'mining', label: 'Mining', onClick: goMining },
+    { key: 'town',   label: 'Ville',  onClick: goTown   },
+  ];
 
   return (
     <>
       {currentZone.type === 'base' && (
         <>
-          <OrbitControls enabled={false} />
-          <Environment preset="sunset" />
+          {/* ... lights, env ... */}
           <Physics gravity={[0, -9.81, 0]}>
             <Character ref={charRef} />
-          
-            {/* Terrain avec collider Rapier */}
             <RigidBody type="fixed" colliders="trimesh">
               <MartianTerrain />
             </RigidBody>
-
             <RigidBody type="fixed" colliders="trimesh">
               <Bunker position={[5, -1, 10]} />
             </RigidBody>
-          
             <RigidBody type="fixed" colliders="trimesh">
               <Vehicle
                 position={[-20, -1, -20]}
                 scale={2.5}
                 rotation={[0, Math.PI / 1.5, 0]}
-                onInteract={handleMining}
                 playerRef={charRef}
+                actions={vehicleActions}
               />
             </RigidBody>
           </Physics>
-
           <ThirdPersonCamera target={charRef} />
-          <ambientLight intensity={10} color="rgba(129, 52, 0, 1)" />
-          <directionalLight
-            position={[30, 50, -10]}
-            intensity={10}
-            color="rgba(180, 82, 1, 0.84)"
-            castShadow
-          />
-          <color attach="background" args={['rgba(202, 111, 83, 0.86)']} />
-          <fog attach="fog" args={['rgba(180, 81, 0, 1)', 30, 100]} />
         </>
       )}
 
       {currentZone.type === 'mining' && currentZone.seed && (
         <>
-          <OrbitControls enabled={false} />
-          <Environment preset="sunset" />
+          {/* ... */}
           <Physics gravity={[0, -9.81, 0]}>
             <RigidBody type="fixed" colliders="trimesh">
               <MiningParcel seed={currentZone.seed} />
             </RigidBody>
             <Character ref={charRef} />
-            <Vehicle
-              position={[-20, 0, -20]}
-              scale={2.5}
-              rotation={[0, Math.PI / 1.5, 0]}
-              onInteract={handleMining}
-              playerRef={charRef}
-            />
+            {/* Le vehicle peut proposer d'autres actions ici aussi si tu veux */}
           </Physics>
           <ThirdPersonCamera target={charRef} />
-          <ambientLight intensity={10} color="rgba(129, 52, 0, 1)" />
-          <directionalLight
-            position={[30, 50, -10]}
-            intensity={10}
-            color="rgba(66, 39, 17, 1)"
-            castShadow
-          />
-          <color attach="background" args={['rgba(202, 111, 83, 0.86)']} />
-          <fog attach="fog" args={['rgba(180, 81, 0, 1)', 10, 100]} />
+        </>
+      )}
+
+      {currentZone.type === 'town' && (
+        <>
+          {/* Ta scène Town ici */}
+          {/* <Town spawn={currentZone.spawn} /> */}
+          <Character ref={charRef} />
+          <ThirdPersonCamera target={charRef} />
         </>
       )}
     </>
