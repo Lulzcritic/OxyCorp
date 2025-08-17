@@ -1,0 +1,2 @@
+- Paraboles vers la terre avec un terminal pour interagir avec la blockchain et synchroniser ses NFT
+- 

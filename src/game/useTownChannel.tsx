@@ -1,4 +1,4 @@
-// src/game/useTownChannel.ts
+// useTownChannel.ts
 import { useEffect, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -8,7 +8,6 @@ export type Peer = {
   skin: string;
   p: [number, number, number];
   ry: number;
-  // timestamps (pour extrapolation éventuelle)
   _t?: number;
 };
 
@@ -16,77 +15,139 @@ type SelfMeta = { id: string; username: string; skin: string };
 
 export function useTownChannel(
   supabase: SupabaseClient,
-  self: SelfMeta,
+  self: SelfMeta | null | undefined,
   getSelfPose: () => { p: [number, number, number]; ry: number },
-  room: string = 'town:global',
+  room = 'town:global',
   hz = 10
 ) {
   const [connected, setConnected] = useState(false);
   const [peers, setPeers] = useState<Map<string, Peer>>(new Map());
-  const peersRef = useRef<Map<string, Peer>>(new Map());
+
+  const peersRef = useRef(new Map<string, Peer>());
   const lastSend = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const getSelfPoseRef = useRef(getSelfPose);
+  useEffect(() => { getSelfPoseRef.current = getSelfPose; }, [getSelfPose]);
+
   const periodMs = 1000 / Math.max(1, hz);
 
   useEffect(() => {
-    const ch = supabase.channel(room, { config: { presence: { key: self.id } } });
+    if (!self?.id) {
+      setConnected(false);
+      peersRef.current.clear();
+      setPeers(new Map());
+      return;
+    }
 
-    ch.on('presence', { event: 'join' }, ({ newPresences }) => {
-      newPresences.forEach((p: any) => {
-        if (p.key === self.id) return;
-        peersRef.current.set(p.key, {
-          id: p.key,
-          username: p.username,
-          skin: p.skin,
+    // pour donner une clé de présence unique par onglet :
+    const presenceKey = `${self.id}:${Math.random().toString(36).slice(2,8)}`;
+    //const presenceKey = self.id;
+
+    let intervalId: number | null = null;
+
+    const ch = supabase.channel(room, { config: { presence: { key: presenceKey }, broadcast: { self: false } } });
+
+    // 1) SYNC: prendre l’état courant des présences (important au montage)
+    ch.on('presence', { event: 'sync' }, () => {
+      const state = ch.presenceState() as Record<string, any[]>;
+      const map = new Map<string, Peer>();
+      for (const [key, presList] of Object.entries(state)) {
+        if (!presList?.length) continue;
+        const latest = presList[presList.length - 1];
+        if (key === presenceKey) continue;
+        map.set(key, {
+          id: key,
+          username: latest.username ?? 'anon',
+          skin: latest.skin ?? 'default',
           p: [0, 0, 0],
           ry: 0,
           _t: performance.now(),
         });
+      }
+      peersRef.current = map;
+      setPeers(new Map(map));
+    });
+
+    // 2) JOIN / LEAVE diff
+    ch.on('presence', { event: 'join' }, ({ newPresences }) => {
+      let changed = false;
+      newPresences.forEach((p: any) => {
+        const key = String(p.key ?? '');
+        if (!key || key === presenceKey) return;
+        if (!peersRef.current.has(key)) {
+          peersRef.current.set(key, {
+            id: key, username: p.username ?? 'anon', skin: p.skin ?? 'default',
+            p: [0,0,0], ry: 0, _t: performance.now(),
+          });
+          changed = true;
+        }
       });
-      setPeers(new Map(peersRef.current));
+      if (changed) setPeers(new Map(peersRef.current));
     });
 
     ch.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-      leftPresences.forEach((p: any) => peersRef.current.delete(p.key));
-      setPeers(new Map(peersRef.current));
+      let changed = false;
+      leftPresences.forEach((p: any) => {
+        const key = String(p.key ?? '');
+        if (key && peersRef.current.delete(key)) changed = true;
+      });
+      if (changed) setPeers(new Map(peersRef.current));
     });
 
+    // 3) Positions : auto-créer le peer s'il arrive avant 'sync'/'join'
     ch.on('broadcast', { event: 'pos' }, ({ payload }) => {
-      const { id, p, ry } = payload as { id: string; p: [number, number, number]; ry: number };
-      if (id === self.id) return;
-      const now = performance.now();
-      const prev = peersRef.current.get(id);
-      if (!prev) return;
-      prev.p = p;
-      prev.ry = ry;
-      prev._t = now;
+      const { id, p, ry } = payload as { id?: string; p: [number,number,number]; ry: number };
+      if (!id || id === presenceKey) return;
+    
+      let peer = peersRef.current.get(id);
+      if (!peer) {
+        // auto-create minimal peer
+        peer = { id, username: 'anon', skin: 'default', p: [0,0,0], ry: 0 };
+        peersRef.current.set(id, peer);
+      }
+      peer.p = p;
+      peer.ry = ry;
+      peer._t = performance.now();
       setPeers(new Map(peersRef.current));
     });
 
     ch.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await ch.track(self); // visible pour les autres
-        setConnected(true);
+        await ch.track({ id: self.id, username: self.username, skin: self.skin });
+    
+        // 1) Envoi immédiat d’un snapshot
+        const pose0 = getSelfPoseRef.current();
+        ch.send({ type: 'broadcast', event: 'pos', payload: { id: presenceKey, ...pose0 } });
+    
+        // 2) Tick 10 Hz stable (même onglet en arrière-plan)
+        intervalId = setInterval(() => {
+          const pose = getSelfPoseRef.current();
+          ch.send({ type: 'broadcast', event: 'pos', payload: { id: presenceKey, ...pose } });
+        }, 100) as unknown as number;
       }
     });
 
-    let raf = 0;
     const tick = () => {
       const now = performance.now();
       if (connected && now - lastSend.current >= periodMs) {
         lastSend.current = now;
-        const pose = getSelfPose();
-        ch.send({ type: 'broadcast', event: 'pos', payload: { id: self.id, ...pose } });
+        const pose = getSelfPoseRef.current();
+        ch.send({ type: 'broadcast', event: 'pos', payload: { id: presenceKey, ...pose } });
       }
-      raf = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(tick);
 
     return () => {
-      cancelAnimationFrame(raf);
+      if (intervalId) clearInterval(intervalId);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       ch.untrack();
       supabase.removeChannel(ch);
+      peersRef.current.clear();
+      setPeers(new Map());
+      setConnected(false);
     };
-  }, [supabase, self.id, self.username, self.skin, room, connected, periodMs]);
+  }, [supabase, room, hz, periodMs, self?.id, self?.username, self?.skin]);
 
   return { connected, peers };
 }

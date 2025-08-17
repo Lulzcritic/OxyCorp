@@ -1,55 +1,76 @@
-import { useMemo } from 'react';
-import { MineableRock } from './MineableRock';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import * as THREE from 'three';
 import { createSeededRandom } from '../utils/seed';
-import { createNoise2D } from 'simplex-noise';
-import { mulberry32 } from '../utils/seed';
+import MineableRock from './MineableRock';
 
-export default function RockSpawns({ seed }: { seed: string }) {
-  const rng = useMemo(() => createSeededRandom(seed + '-rocks'), [seed]);
+type Rock = { id: string; position: [number, number, number] };
 
-  function getHeightAt(x: number, z: number, seed: string): number {
-    const hash = Array.from(seed).reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const random = mulberry32(hash);
-    const noise2D = createNoise2D(random);
+export default function RockSpawns({
+  seed,
+  terrainMesh,
+  getPlayerPos,
+  areaSize = 300,
+  count = 10,
+  yStart = 1000,
+  yEps = 0.02,
+}: {
+  seed: string;
+  terrainMesh: THREE.Mesh | null;
+  getPlayerPos: () => THREE.Vector3;
+  areaSize?: number;
+  count?: number;
+  yStart?: number;
+  yEps?: number;
+}) {
+  const raycaster = useRef(new THREE.Raycaster()).current;
+  const down = useRef(new THREE.Vector3(0, -1, 0)).current;
 
-    return noise2D(x * 0.02, z * 0.02) * 4 +
-          noise2D(x * 0.1, z * 0.1) * 1.2;
-  }
+  const [rocks, setRocks] = useState<Rock[]>([]);
 
+  useEffect(() => {
+    if (!terrainMesh) return;
 
-  const rocks = useMemo(() => {
-    const dailySeed = createSeededRandom(seed + '-rocks');
-    const count = 10;
-    const rockData = [];
+    terrainMesh.updateWorldMatrix(true, true);
 
+    const newRocks: Rock[] = [];
     for (let i = 0; i < count; i++) {
-      const x = rng() * 300 - 150; // exemple de zone centrée
-      const z = rng() * 300 - 150;
-      const y = getHeightAt(x, z, seed);
+      const r = createSeededRandom(`${seed}-rocks-${i}`);
+      const x = r() * areaSize - areaSize / 2;
+      const z = r() * areaSize - areaSize / 2;
 
-      rockData.push({ id: `rock-${i}`, position: [x, y, z] });
+      const origin = new THREE.Vector3(x, yStart, z);
+      raycaster.set(origin, down);
+
+      const hits = raycaster.intersectObject(terrainMesh, true);
+      if (hits.length > 0) {
+        const hit = hits[0];
+        const y = hit.point.y + yEps;
+        newRocks.push({ id: `rock-${i}`, position: [x, y, z] });
+      }
     }
 
-    return rockData;
-  }, [seed]);
+    setRocks(newRocks);
+  }, [terrainMesh, seed, count, areaSize, yStart, yEps]);
 
+  const handleMined = useCallback((id: string) => {
+    // Ici tu pourras appeler supabase.functions.invoke('mineRock', ...)
+    setRocks((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  // RockSpawns.tsx (extrait : rendu uniquement)
   return (
-    //<MineableRock key={id} id={id} position={position} />
     <>
-      {rocks.map(({ id, position }) => (
-        <>
-        
-        <mesh position={position}>
-          <sphereGeometry args={[0.5, 8, 8]} />
-          <meshStandardMaterial color="red" />
-        </mesh>
-
-        <mesh position={[position[0], 0, position[2]]}>
-          <boxGeometry args={[0.5, 0.1, 0.5]} />
-          <meshStandardMaterial color="green" />
-        </mesh>
-        </>
+      {rocks.map((r) => (
+        <MineableRock
+          key={r.id}
+          id={r.id}
+          position={r.position}
+          getPlayerPos={getPlayerPos}       // <— fourni par la scène
+          onMined={(id) => setRocks((prev) => prev.filter((x) => x.id !== id))}
+          interactRadius={3}
+        />
       ))}
     </>
   );
+
 }

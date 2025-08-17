@@ -3,6 +3,7 @@ import { create } from 'zustand';
 type ControlState = {
   // Animation / état
   moving: boolean;
+  disableMovement: boolean;
   setMoving: (value: boolean) => void;
 
   // Axes de déplacement (caméra-relatifs)
@@ -17,6 +18,7 @@ type ControlState = {
 
 export const useControlStore = create<ControlState>((set) => ({
   moving: false,
+  disableMovement: false,
   setMoving: (value) => set({ moving: value }),
 
   forward: 0,

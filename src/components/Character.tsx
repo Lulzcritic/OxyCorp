@@ -6,22 +6,12 @@ import { useControlStore } from '../game/useControlStore';
 import { useCharacterControls } from '../game/useCharacterControls';
 import type { Group } from 'three';
 import * as THREE from 'three';
-
-type MovementInput = {
-  forward: number; // -1..1 (avant +)
-  right: number;   // -1..1 (droite +)
-  run: boolean;
-};
-
-const selectMovement = (s: any): MovementInput => ({
-  forward: s.forward,
-  right:   s.right,
-  run:     s.run,
-});
+import { SkeletonUtils } from 'three-stdlib';
 
 const Character = forwardRef<Group>((props, externalRef) => {
   const { scene, animations } = useGLTF('/models/player.glb');
-  const { actions, mixer } = useAnimations(animations, scene);
+  const sceneClone = useMemo(() => SkeletonUtils.clone(scene) as Group, [scene]);
+  const { actions, mixer } = useAnimations(animations, sceneClone);
 
   // --- Réfs ---
   const rbRef = useRef<RapierRigidBody | null>(null);
@@ -152,7 +142,7 @@ const Character = forwardRef<Group>((props, externalRef) => {
           args={[0.9, 0.35]}      // halfHeight, radius => hauteur totale ≈ 2.5m
           position={[0, 1.25, 0]} // centre de la capsule au "nombril"
         />
-        <primitive object={scene} />
+        <primitive object={sceneClone} />
       </group>
     </RigidBody>
   );
