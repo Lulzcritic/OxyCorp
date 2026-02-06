@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Production
+dist
+build
+.output
+
+# Misc
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Turbo
+.turbo
+
+# Test
+coverage
+
+# IDE
+.vscode
+.idea
+
+app/web/public/*
+app/api/public/*
+
+.gemini
+.agent
+.bmad-core
