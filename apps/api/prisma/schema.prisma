@@ -41,13 +41,18 @@ model Sector {
 }
 
 model User {
-  id           String      @id @default(uuid())
-  username     String      @unique
+  id             String      @id @default(uuid())
+  username       String      @unique
+  email          String?     @unique
+  passwordHash   String?     @map("password_hash")
+  discordId      String?     @unique @map("discord_id")
+  refreshToken   String?     @map("refresh_token")
   credits        BigInt      @default(1000)
   bunker_level   Int         @default(1)
   specialization String?     // MVP: 'COGITATOR' | 'FORGE' | 'MERCHANT' | null
   xp             BigInt      @default(0)
   skillPoints    Int         @default(0) @map("skill_points")
+  equipment      Json?       // e.g. { head: "itemId", body: "itemId", weapon: "itemId" }
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   
@@ -59,6 +64,7 @@ model User {
   bunkerFacilities BunkerFacility[]
   quests           Quest[]
   userSkills       UserSkills[]
+  townSnapshot     TownSnapshot?
 
   @@map("users")
 }
@@ -196,3 +202,35 @@ model Quest {
 }
 
 
+model DroneVariant {
+  id          String   @id
+  name        String
+  description String?
+  
+  // Core Stats
+  attack      Int      @default(0)
+  defense     Int      @default(0)
+  speed       Int      @default(1)
+  range       Int      @default(1)
+  health      Int      @default(10)
+
+  // Meta
+  tier        Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("drone_variants")
+}
+
+model TownSnapshot {
+  id        String   @id @default(uuid())
+  playerId  String   @unique @map("player_id")
+  posX      Float    @default(0) @map("pos_x")
+  posY      Float    @default(0) @map("pos_y")
+  posZ      Float    @default(0) @map("pos_z")
+  rotY      Float    @default(0) @map("rot_y")
+
+  player    User     @relation(fields: [playerId], references: [id])
+
+  @@map("town_snapshots")
+}

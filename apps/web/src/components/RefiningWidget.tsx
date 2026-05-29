@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import GrimdarkProgressBar from './grimdark/GrimdarkProgressBar'
+import '../styles/grimdark-theme.css'
 
 interface RefiningJob {
   id: string
@@ -25,7 +29,6 @@ interface Recipe {
   durationSeconds: number
 }
 
-// Hardcoded recipes matching backend REFINING_RECIPES
 const RECIPES: Recipe[] = [
   {
     id: 'IRON_TO_STEEL',
@@ -59,11 +62,9 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
   const [timers, setTimers] = useState<Record<string, number>>({})
 
   const fetchJobs = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/refine/jobs', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const res = await apiFetch('/refine/jobs', {
     })
 
     if (res.ok) {
@@ -77,7 +78,6 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
     fetchJobs()
   }, [fetchJobs])
 
-  // Timer logic
   useEffect(() => {
     if (jobs.length === 0) return
 
@@ -97,15 +97,13 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
   }, [jobs])
 
   const startRefining = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setLoading(true)
-    const res = await fetch('http://localhost:3000/api/refine/start', {
+    const res = await apiFetch('/refine/start', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ recipeId: selectedRecipe, quantity })
     })
@@ -120,14 +118,12 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
   }
 
   const claimJob = async (jobId: string) => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/refine/claim', {
+    const res = await apiFetch('/refine/claim', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ jobId })
     })
@@ -147,119 +143,128 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
 
   if (loading) {
     return (
-      <div style={{ border: '1px solid #444', padding: 20, background: '#111', marginTop: 20 }}>
-        <h3 style={{ color: '#FF6600', marginTop: 0 }}>THE FORGE</h3>
-        <div style={{ color: '#666' }}>Heating up...</div>
-      </div>
+      <GrimdarkCard title="THE FORGE" status="online" style={{ marginTop: 20 }}>
+        <div style={{ color: '#555', fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          &gt; Heating up...
+        </div>
+      </GrimdarkCard>
     )
   }
 
   return (
-    <div style={{ border: '1px solid #444', padding: 20, background: '#111', marginTop: 20 }}>
-      <h3 style={{ color: '#FF6600', marginTop: 0 }}>THE FORGE</h3>
-
-      {/* Recipe Selector */}
-      <div style={{ marginBottom: 15 }}>
-        <label style={{ color: '#888', display: 'block', marginBottom: 5 }}>RECIPE</label>
-        <select
-          value={selectedRecipe}
-          onChange={(e) => setSelectedRecipe(e.target.value)}
-          style={{
-            background: '#222', color: '#00FF9D', border: '1px solid #444',
-            padding: '8px 12px', width: '100%', fontSize: '0.9rem'
-          }}
-        >
-          {RECIPES.map(r => (
-            <option key={r.id} value={r.id}>
-              {r.name} ({r.inputQty} {r.inputItem} → {r.outputQty} {r.outputItem})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Quantity Input */}
-      <div style={{ marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <label style={{ color: '#888' }}>BATCHES</label>
-        <input
-          type="number"
-          min={1}
-          max={10}
-          value={quantity}
-          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-          style={{
-            background: '#222', color: '#00FF9D', border: '1px solid #444',
-            padding: '8px', width: 60, textAlign: 'center'
-          }}
-        />
-        <button
-          onClick={startRefining}
-          style={{
-            background: '#FF6600', color: 'black', border: 'none',
-            padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', flex: 1
-          }}
-        >
-          IGNITE FORGE
-        </button>
-      </div>
-
-      {/* Active Jobs */}
-      {jobs.length > 0 && (
-        <div style={{ borderTop: '1px solid #333', paddingTop: 15 }}>
-          <div style={{ color: '#888', marginBottom: 10, fontSize: '0.8rem' }}>ACTIVE BURNS</div>
-          {jobs.map(job => {
-            const timeLeft = timers[job.id] ?? 0
-            const isReady = timeLeft === 0 && job.status === 'ACTIVE'
-            const batches = job.data?.batches || 1
-            const output = job.data?.outputPerBatch || 1
-
-            return (
-              <div
-                key={job.id}
-                style={{
-                  background: '#1A1A1A', padding: 10, marginBottom: 8,
-                  border: isReady ? '1px solid #FFD700' : '1px solid #333'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <span style={{ color: isReady ? '#FFD700' : '#00FF9D' }}>
-                    {job.rewardItemId} x{batches * output}
-                  </span>
-                  <span style={{ color: '#666', fontSize: '0.8rem' }}>
-                    {isReady ? 'READY' : `${timeLeft}s`}
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                {!isReady && (
-                  <div style={{ background: '#333', height: 4, borderRadius: 2 }}>
-                    <div
-                      style={{
-                        background: '#FF6600',
-                        height: '100%',
-                        width: `${Math.max(0, 100 - (timeLeft / job.durationSeconds) * 100)}%`,
-                        transition: 'width 1s linear'
-                      }}
-                    />
-                  </div>
-                )}
-
-                {isReady && (
-                  <button
-                    onClick={() => claimJob(job.id)}
-                    style={{
-                      background: '#FFD700', color: 'black', border: 'none',
-                      padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer',
-                      width: '100%', marginTop: 8
-                    }}
-                  >
-                    COLLECT
-                  </button>
-                )}
-              </div>
-            )
-          })}
+    <GrimdarkCard title="THE FORGE" status="online" style={{ marginTop: 20 }}>
+      <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        {/* Recipe Selector */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ color: '#555', display: 'block', marginBottom: 4, fontSize: '0.9rem' }}>
+            &gt; RECIPE
+          </label>
+          <select
+            value={selectedRecipe}
+            onChange={(e) => setSelectedRecipe(e.target.value)}
+            style={{
+              background: '#0E0E0E',
+              color: '#00FF9D',
+              border: '1px solid #2A2A2A',
+              padding: '8px 12px',
+              width: '100%',
+              fontSize: '1rem',
+              fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+            }}
+          >
+            {RECIPES.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.name} ({r.inputQty} {r.inputItem} → {r.outputQty} {r.outputItem})
+              </option>
+            ))}
+          </select>
         </div>
-      )}
-    </div>
+
+        {/* Quantity + Start */}
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ color: '#555', fontSize: '0.9rem' }}>BATCHES</label>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            style={{
+              background: '#0E0E0E',
+              color: '#00FF9D',
+              border: '1px solid #2A2A2A',
+              padding: '6px',
+              width: 60,
+              textAlign: 'center',
+              fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+              fontSize: '1rem',
+            }}
+          />
+          <GrimdarkButton variant="warning" onClick={startRefining} style={{ flex: 1 }}>
+            IGNITE FORGE
+          </GrimdarkButton>
+        </div>
+
+        {/* Active Jobs */}
+        {jobs.length > 0 && (
+          <div style={{ borderTop: '1px solid #2A2A2A', paddingTop: 12 }}>
+            <div style={{ color: '#555', marginBottom: 8, fontSize: '0.9rem' }}>
+              &gt; ACTIVE BURNS
+            </div>
+            {jobs.map(job => {
+              const timeLeft = timers[job.id] ?? 0
+              const isReady = timeLeft === 0 && job.status === 'ACTIVE'
+              const batches = job.data?.batches || 1
+              const output = job.data?.outputPerBatch || 1
+              const progressPct = job.durationSeconds > 0
+                ? Math.max(0, 100 - (timeLeft / job.durationSeconds) * 100)
+                : 100
+
+              return (
+                <div
+                  key={job.id}
+                  style={{
+                    background: '#0E0E0E',
+                    padding: 10,
+                    marginBottom: 6,
+                    border: isReady ? '1px solid #FFA500' : '1px solid #2A2A2A'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{
+                      color: isReady ? '#FFA500' : '#00FF9D',
+                      textShadow: isReady ? '0 0 5px rgba(255, 165, 0, 0.3)' : 'none',
+                    }}>
+                      {job.rewardItemId} x{batches * output}
+                    </span>
+                    <span style={{ color: '#555', fontSize: '0.9rem' }}>
+                      {isReady ? 'READY' : `${timeLeft}s`}
+                    </span>
+                  </div>
+
+                  {!isReady && (
+                    <GrimdarkProgressBar
+                      value={progressPct}
+                      variant="warning"
+                      width={15}
+                    />
+                  )}
+
+                  {isReady && (
+                    <GrimdarkButton
+                      variant="warning"
+                      onClick={() => claimJob(job.id)}
+                      style={{ width: '100%', marginTop: 6 }}
+                    >
+                      COLLECT
+                    </GrimdarkButton>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </GrimdarkCard>
   )
 }

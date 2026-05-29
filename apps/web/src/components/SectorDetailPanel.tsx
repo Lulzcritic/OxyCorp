@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import '../styles/grimdark-theme.css'
 
 interface Sector {
   id: string
@@ -26,11 +29,9 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   }, [])
 
   const fetchSectorInfo = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/map/my-sectors', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const res = await apiFetch('/map/my-sectors', {
     })
 
     if (res.ok) {
@@ -42,16 +43,14 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   const claimSector = async () => {
     if (!sector) return
 
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setClaiming(true)
     try {
-      const res = await fetch('http://localhost:3000/api/map/claim', {
+      const res = await apiFetch('/map/claim', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ x: parseInt(sector.x), y: parseInt(sector.y) })
       })
@@ -73,21 +72,18 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   const installOutpost = async () => {
     if (!sector) return
 
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    // Confirm cost
     if (!confirm('Install Outpost?\nCost: 1000 Credits, 50 Steel Plating, 100 Iron Ore\nEffect: +25% Mining Yield')) {
       return;
     }
 
     setClaiming(true)
     try {
-      const res = await fetch('http://localhost:3000/api/map/install-outpost', {
+      const res = await apiFetch('/map/install-outpost', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ sectorId: sector.id })
       })
@@ -105,14 +101,12 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   }
 
   const generateTerritory = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setClaiming(true)
     try {
-      const res = await fetch('http://localhost:3000/api/map/generate-territory', {
+      const res = await apiFetch('/map/generate-territory', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` }
       })
 
       if (res.ok) {
@@ -130,32 +124,28 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
 
   if (!sector) {
     return (
-      <div style={{ border: '1px solid #444', padding: 20, background: '#111', marginTop: 20 }}>
-        <h3 style={{ color: '#888', marginTop: 0 }}>SECTOR INTEL</h3>
-        <div style={{ color: '#555' }}>Select a sector on the tactical map for details.</div>
-        {sectorInfo && (
-          <div style={{ marginTop: 10, color: '#00FFFF', fontFamily: 'monospace' }}>
-            TERRITORIES: {sectorInfo.count}/{sectorInfo.limit}
-          </div>
-        )}
-        <button
-          onClick={generateTerritory}
-          disabled={claiming}
-          style={{
-            marginTop: 15,
-            width: '100%',
-            background: claiming ? '#444' : '#FF6600',
-            color: 'white',
-            border: 'none',
-            padding: '10px 20px',
-            fontWeight: 'bold',
-            cursor: claiming ? 'wait' : 'pointer',
-            fontSize: '0.9rem'
-          }}
-        >
-          {claiming ? 'GENERATING...' : '🌐 EXPAND TERRITORY (Generate Nearby Sectors)'}
-        </button>
-      </div>
+      <GrimdarkCard title="SECTOR INTEL" status="offline" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          <div style={{ color: '#555' }}>Select a sector on the tactical map for details.</div>
+          {sectorInfo && (
+            <div style={{
+              marginTop: 10,
+              color: '#00F3FF',
+              textShadow: '0 0 5px rgba(0, 243, 255, 0.3)',
+            }}>
+              [TERRITORIES: {sectorInfo.count}/{sectorInfo.limit}]
+            </div>
+          )}
+          <GrimdarkButton
+            variant="warning"
+            onClick={generateTerritory}
+            disabled={claiming}
+            style={{ width: '100%', marginTop: 12 }}
+          >
+            {claiming ? 'GENERATING...' : 'EXPAND TERRITORY'}
+          </GrimdarkButton>
+        </div>
+      </GrimdarkCard>
     )
   }
 
@@ -165,99 +155,99 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   const canInstallOutpost = isOwnedByMe && sector.type === 'RESOURCE' && !sector.hasOutpost
 
   return (
-    <div style={{ border: '1px solid #444', padding: 20, background: '#111', marginTop: 20 }}>
-      <h3 style={{ color: '#888', marginTop: 0 }}>SECTOR INTEL</h3>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div>
-          <div style={{ color: '#666', fontSize: '0.8rem' }}>COORDINATES</div>
-          <div style={{ color: '#00FF9D', fontFamily: 'monospace' }}>
-            ({sector.x}, {sector.y})
-          </div>
-        </div>
-        <div>
-          <div style={{ color: '#666', fontSize: '0.8rem' }}>TYPE</div>
-          <div style={{ 
-            color: sector.type === 'BUNKER' ? '#00FF9D' : 
-                   sector.type === 'RESOURCE' ? '#FFD700' : '#666' 
-          }}>
-            {sector.type}
-          </div>
-        </div>
-        <div>
-          <div style={{ color: '#666', fontSize: '0.8rem' }}>STATUS</div>
-          <div style={{ 
-            color: isOwnedByMe ? '#00FFFF' : isOwned ? '#FF5555' : '#00FF9D' 
-          }}>
-            {isOwnedByMe ? 'YOUR TERRITORY' : isOwned ? 'HOSTILE' : 'UNCLAIMED'}
-          </div>
-        </div>
-        {sector.resources && (
+    <GrimdarkCard
+      title="SECTOR INTEL"
+      status={isOwnedByMe ? 'online' : isOwned ? 'offline' : 'warning'}
+      style={{ marginTop: 20 }}
+    >
+      <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <div style={{ color: '#666', fontSize: '0.8rem' }}>RESOURCE</div>
-            <div style={{ color: '#FFD700' }}>
-              {sector.resources.type} ({Math.round(sector.resources.richness * 100)}%)
+            <div style={{ color: '#555', fontSize: '0.85rem' }}>COORDINATES</div>
+            <div style={{ color: '#00FF9D' }}>
+              [{sector.x}, {sector.y}]
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#555', fontSize: '0.85rem' }}>TYPE</div>
+            <div style={{
+              color: sector.type === 'BUNKER' ? '#00FF9D' :
+                     sector.type === 'RESOURCE' ? '#FFA500' : '#555'
+            }}>
+              {sector.type}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#555', fontSize: '0.85rem' }}>STATUS</div>
+            <div style={{
+              color: isOwnedByMe ? '#00F3FF' : isOwned ? '#CC0000' : '#00FF9D',
+              textShadow: isOwnedByMe ? '0 0 5px rgba(0, 243, 255, 0.3)' : 'none',
+            }}>
+              {isOwnedByMe ? 'YOUR TERRITORY' : isOwned ? 'HOSTILE' : 'UNCLAIMED'}
+            </div>
+          </div>
+          {sector.resources && (
+            <div>
+              <div style={{ color: '#555', fontSize: '0.85rem' }}>RESOURCE</div>
+              <div style={{ color: '#FFA500' }}>
+                [{sector.resources.type}: {Math.round(sector.resources.richness * 100)}%]
+              </div>
+            </div>
+          )}
+        </div>
+
+        {sector.hasOutpost && (
+          <div style={{
+            marginTop: 12,
+            padding: 8,
+            background: 'rgba(0, 255, 157, 0.05)',
+            border: '1px solid #00CC66'
+          }}>
+            <div style={{
+              color: '#00FF9D',
+              textShadow: '0 0 5px rgba(0, 255, 157, 0.3)',
+            }}>
+              ⚡ OUTPOST ACTIVE
+            </div>
+            <div style={{ color: '#555', fontSize: '0.9rem' }}>Extraction Yield: +25%</div>
+          </div>
+        )}
+
+        {sectorInfo && (
+          <div style={{
+            marginTop: 12,
+            padding: 8,
+            background: '#0E0E0E',
+            borderLeft: '2px solid #00F3FF'
+          }}>
+            <div style={{ color: '#555', fontSize: '0.85rem' }}>EXPANSION STATUS</div>
+            <div style={{ color: '#00F3FF' }}>
+              [TERRITORIES: {sectorInfo.count}/{sectorInfo.limit}]
             </div>
           </div>
         )}
+
+        {canClaim && (
+          <GrimdarkButton
+            onClick={claimSector}
+            disabled={claiming}
+            style={{ width: '100%', marginTop: 12 }}
+          >
+            {claiming ? 'CLAIMING...' : 'CLAIM SECTOR [500 CR]'}
+          </GrimdarkButton>
+        )}
+
+        {canInstallOutpost && (
+          <GrimdarkButton
+            variant="warning"
+            onClick={installOutpost}
+            disabled={claiming}
+            style={{ width: '100%', marginTop: 8 }}
+          >
+            {claiming ? 'CONSTRUCTING...' : 'CONSTRUCT OUTPOST'}
+          </GrimdarkButton>
+        )}
       </div>
-
-      {sector.hasOutpost && (
-        <div style={{ marginTop: 15, padding: 10, background: '#112211', border: '1px solid #00FF9D' }}>
-           <div style={{ color: '#00FF9D', fontWeight: 'bold' }}>⚡ OUTPOST ACTIVE</div>
-           <div style={{ color: '#888', fontSize: '0.8rem' }}>Extraction Yield: +25%</div>
-        </div>
-      )}
-
-      {sectorInfo && (
-        <div style={{ marginTop: 15, padding: 10, background: '#0A0A0A', borderLeft: '2px solid #00FFFF' }}>
-          <div style={{ color: '#888', fontSize: '0.8rem' }}>EXPANSION STATUS</div>
-          <div style={{ color: '#00FFFF', fontFamily: 'monospace' }}>
-            TERRITORIES: {sectorInfo.count}/{sectorInfo.limit}
-          </div>
-        </div>
-      )}
-
-      {canClaim && (
-        <button
-          onClick={claimSector}
-          disabled={claiming}
-          style={{
-            marginTop: 15,
-            width: '100%',
-            background: claiming ? '#444' : '#00FF9D',
-            color: 'black',
-            border: 'none',
-            padding: '12px 20px',
-            fontWeight: 'bold',
-            cursor: claiming ? 'wait' : 'pointer',
-            fontSize: '1rem'
-          }}
-        >
-          {claiming ? 'CLAIMING...' : 'CLAIM SECTOR (500 CR)'}
-        </button>
-      )}
-
-      {canInstallOutpost && (
-        <button
-          onClick={installOutpost}
-          disabled={claiming}
-          style={{
-            marginTop: 15,
-            width: '100%',
-            background: claiming ? '#444' : '#FFD700',
-            color: 'black',
-            border: 'none',
-            padding: '12px 20px',
-            fontWeight: 'bold',
-            cursor: claiming ? 'wait' : 'pointer',
-            fontSize: '0.9rem'
-          }}
-          title="Cost: 1000 CR, 50 Steel, 100 Iron"
-        >
-          {claiming ? 'CONSTRUCTING...' : '⚙️ CONSTRUCT OUTPOST'}
-        </button>
-      )}
-    </div>
+    </GrimdarkCard>
   )
 }

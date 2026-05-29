@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import GrimdarkProgressBar from './grimdark/GrimdarkProgressBar'
+import '../styles/grimdark-theme.css'
 
 interface Quest {
   id: string
@@ -22,11 +26,9 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
   const [claiming, setClaiming] = useState<string | null>(null)
 
   const fetchQuests = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/directives', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const res = await apiFetch('/directives', {
     })
 
     if (res.ok) {
@@ -40,7 +42,6 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
     fetchQuests()
   }, [fetchQuests])
 
-  // Refetch quests when refreshTrigger changes (e.g., after mining claim)
   useEffect(() => {
     if (refreshTrigger !== undefined && refreshTrigger > 0) {
       fetchQuests()
@@ -48,13 +49,11 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
   }, [refreshTrigger, fetchQuests])
 
   const generateDaily = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setLoading(true)
-    const res = await fetch('http://localhost:3000/api/directives/daily', {
+    const res = await apiFetch('/directives/daily', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` }
     })
 
     if (res.ok) {
@@ -67,15 +66,13 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
   }
 
   const claimQuest = async (questId: string) => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setClaiming(questId)
-    const res = await fetch('http://localhost:3000/api/directives/claim', {
+    const res = await apiFetch('/directives/claim', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ questId })
     })
@@ -94,107 +91,103 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
 
   if (loading) {
     return (
-      <div style={{ border: '1px solid #9933FF', padding: 20, background: '#111', marginTop: 20 }}>
-        <h3 style={{ color: '#9933FF', marginTop: 0 }}>DIRECTIVES</h3>
-        <div style={{ color: '#666' }}>Receiving transmission...</div>
-      </div>
+      <GrimdarkCard title="INCOMING TRANSMISSION" status="warning" style={{ marginTop: 20 }}>
+        <div style={{
+          color: '#FFA500',
+          fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+          textShadow: '0 0 5px rgba(255, 165, 0, 0.3)',
+        }}>
+          &gt; Receiving transmission...
+        </div>
+      </GrimdarkCard>
     )
   }
 
   const activeQuests = quests.filter(q => q.status === 'ACTIVE')
 
   return (
-    <div style={{ border: '1px solid #9933FF', padding: 20, background: '#111', marginTop: 20 }}>
-      <h3 style={{ color: '#9933FF', marginTop: 0, marginBottom: 15 }}>DIRECTIVES</h3>
-
-      {activeQuests.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 20 }}>
-          <div style={{ color: '#666', marginBottom: 15 }}>NO ACTIVE MISSIONS</div>
-          <button
-            onClick={generateDaily}
-            style={{
-              background: '#9933FF', color: 'white', border: 'none',
-              padding: '12px 24px', fontWeight: 'bold', cursor: 'pointer'
-            }}
-          >
-            GENERATE DAILY DIRECTIVES
-          </button>
+    <GrimdarkCard title="INCOMING TRANSMISSION" status={activeQuests.length > 0 ? 'online' : 'warning'} style={{ marginTop: 20 }}>
+      <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        {/* Sub-header */}
+        <div style={{
+          color: '#555',
+          fontSize: '0.9rem',
+          marginBottom: 12,
+          borderBottom: '1px solid #2A2A2A',
+          paddingBottom: 8,
+        }}>
+          DIRECTIVES // ACTIVE MISSIONS: {activeQuests.length}
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {activeQuests.slice(0, 3).map(quest => {
-            const targetCount = quest.target?.count || 1
-            const progressPct = Math.min(100, (quest.progress / targetCount) * 100)
-            const isComplete = quest.progress >= targetCount
-            const isClaiming = claiming === quest.id
 
-            return (
-              <div
-                key={quest.id}
-                style={{
-                  background: isComplete ? '#9933FF20' : '#1A1A1A',
-                  border: isComplete ? '1px solid #9933FF' : '1px solid #333',
-                  padding: 12
-                }}
-              >
-                {/* Quest Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ color: '#9933FF', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                    {quest.type}
-                  </span>
-                  <span style={{ color: '#666', fontSize: '0.8rem' }}>
-                    {quest.target?.item || 'OBJECTIVE'}
-                  </span>
-                </div>
+        {activeQuests.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ color: '#555', marginBottom: 15 }}>NO ACTIVE MISSIONS</div>
+            <GrimdarkButton variant="warning" onClick={generateDaily}>
+              GENERATE DAILY DIRECTIVES
+            </GrimdarkButton>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {activeQuests.slice(0, 3).map(quest => {
+              const targetCount = quest.target?.count || 1
+              const isComplete = quest.progress >= targetCount
+              const isClaiming = claiming === quest.id
 
-                {/* Progress */}
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: isComplete ? '#00FF9D' : '#888', fontSize: '0.85rem' }}>
-                      {quest.progress} / {targetCount}
+              return (
+                <div
+                  key={quest.id}
+                  style={{
+                    background: isComplete ? 'rgba(0, 255, 157, 0.05)' : '#0E0E0E',
+                    border: isComplete ? '1px solid #00CC66' : '1px solid #2A2A2A',
+                    padding: 12,
+                  }}
+                >
+                  {/* Quest Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{
+                      color: isComplete ? '#00FF9D' : '#FFA500',
+                      fontSize: '1rem',
+                      textShadow: isComplete ? '0 0 5px rgba(0, 255, 157, 0.3)' : '0 0 5px rgba(255, 165, 0, 0.3)',
+                    }}>
+                      &gt; {quest.type}
                     </span>
-                    <span style={{ color: '#555', fontSize: '0.75rem' }}>
-                      {progressPct.toFixed(0)}%
+                    <span style={{ color: '#555', fontSize: '0.9rem' }}>
+                      {quest.target?.item || 'OBJECTIVE'}
                     </span>
                   </div>
-                  <div style={{ background: '#333', height: 6, borderRadius: 3 }}>
-                    <div
-                      style={{
-                        background: isComplete ? '#00FF9D' : '#9933FF',
-                        height: '100%',
-                        width: `${progressPct}%`,
-                        borderRadius: 3,
-                        transition: 'width 0.3s ease'
-                      }}
+
+                  {/* ASCII Progress */}
+                  <div style={{ marginBottom: 8 }}>
+                    <GrimdarkProgressBar
+                      value={quest.progress}
+                      max={targetCount}
+                      variant={isComplete ? 'primary' : 'warning'}
+                      width={15}
                     />
                   </div>
-                </div>
 
-                {/* Rewards */}
-                <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: 8 }}>
-                  Reward: {quest.reward?.credits ? `${quest.reward.credits} Credits` : ''}
-                  {quest.reward?.xp ? ` | ${quest.reward.xp} XP` : ''}
-                </div>
+                  {/* Rewards */}
+                  <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: 8 }}>
+                    REWARD: {quest.reward?.credits ? `₡${quest.reward.credits}` : ''}
+                    {quest.reward?.xp ? ` | ${quest.reward.xp} XP` : ''}
+                  </div>
 
-                {/* Claim Button */}
-                {isComplete && (
-                  <button
-                    onClick={() => claimQuest(quest.id)}
-                    disabled={isClaiming}
-                    style={{
-                      width: '100%', background: '#00FF9D', color: 'black',
-                      border: 'none', padding: '10px', fontWeight: 'bold',
-                      cursor: isClaiming ? 'wait' : 'pointer'
-                    }}
-                  >
-                    {isClaiming ? 'CLAIMING...' : 'CLAIM REWARD'}
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+                  {/* Claim Button */}
+                  {isComplete && (
+                    <GrimdarkButton
+                      onClick={() => claimQuest(quest.id)}
+                      disabled={isClaiming}
+                      style={{ width: '100%' }}
+                    >
+                      {isClaiming ? 'CLAIMING...' : 'CLAIM REWARD'}
+                    </GrimdarkButton>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </GrimdarkCard>
   )
 }

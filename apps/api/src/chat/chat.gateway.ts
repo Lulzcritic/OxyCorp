@@ -29,7 +29,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const token = this.extractToken(client);
       if (!token) throw new Error('No token');
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.SUPABASE_JWT_SECRET || 'super-secret-jwt-key',
+        secret: process.env.JWT_SECRET || 'super-secret-jwt-key',
       });
       (client as any).user = payload;
 

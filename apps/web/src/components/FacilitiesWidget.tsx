@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import GrimdarkProgressBar from './grimdark/GrimdarkProgressBar'
+import '../styles/grimdark-theme.css'
 
 interface Facility {
   type: 'REFINING_VAT' | 'LOGISTICS_HUB' | 'COMMAND_ARRAY'
@@ -16,7 +20,6 @@ interface FacilitiesWidgetProps {
   inventory?: { item: string; quantity: string }[]
 }
 
-// Facility display configuration
 const FACILITY_CONFIG: Record<string, { name: string; icon: string; color: string; description: string }> = {
   REFINING_VAT: {
     name: 'Refining Vat',
@@ -38,14 +41,13 @@ const FACILITY_CONFIG: Record<string, { name: string; icon: string; color: strin
   }
 }
 
-// Upgrade costs (mirrored from backend for display)
 const UPGRADE_COSTS: Record<string, FacilityCost> = {
-  REFINING_VAT_2: { credits: 500, items: [{ item: 'STEEL_PLATING', quantity: 5 }] },
-  REFINING_VAT_3: { credits: 1500, items: [{ item: 'STEEL_PLATING', quantity: 15 }] },
-  LOGISTICS_HUB_2: { credits: 750, items: [{ item: 'STEEL_PLATING', quantity: 3 }] },
-  LOGISTICS_HUB_3: { credits: 2000, items: [{ item: 'STEEL_PLATING', quantity: 10 }] },
-  COMMAND_ARRAY_2: { credits: 1000, items: [{ item: 'STEEL_PLATING', quantity: 5 }] },
-  COMMAND_ARRAY_3: { credits: 3000, items: [{ item: 'STEEL_PLATING', quantity: 20 }] },
+  REFINING_VAT_2: { credits: 500, items: [{ item: 'steel_plating', quantity: 5 }] },
+  REFINING_VAT_3: { credits: 1500, items: [{ item: 'steel_plating', quantity: 15 }] },
+  LOGISTICS_HUB_2: { credits: 750, items: [{ item: 'steel_plating', quantity: 3 }] },
+  LOGISTICS_HUB_3: { credits: 2000, items: [{ item: 'steel_plating', quantity: 10 }] },
+  COMMAND_ARRAY_2: { credits: 1000, items: [{ item: 'steel_plating', quantity: 5 }] },
+  COMMAND_ARRAY_3: { credits: 3000, items: [{ item: 'steel_plating', quantity: 20 }] },
 }
 
 const MAX_LEVEL = 3
@@ -57,11 +59,9 @@ export default function FacilitiesWidget({ onUpgrade, inventory }: FacilitiesWid
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null)
 
   const fetchFacilities = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/bunker/facilities', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const res = await apiFetch('/bunker/facilities', {
     })
 
     if (res.ok) {
@@ -83,15 +83,13 @@ export default function FacilitiesWidget({ onUpgrade, inventory }: FacilitiesWid
 
   const getInventoryQuantity = (item: string): number => {
     if (!inventory) return 0
-    const slot = inventory.find(i => i.item === item)
+    const slot = inventory.find(i => i.item.toLowerCase() === item.toLowerCase())
     return slot ? parseInt(slot.quantity) : 0
   }
 
   const canAffordUpgrade = (facility: Facility): boolean => {
     const cost = getUpgradeCost(facility.type, facility.level)
     if (!cost) return false
-    
-    // Check materials
     if (cost.items) {
       for (const req of cost.items) {
         if (getInventoryQuantity(req.item) < req.quantity) {
@@ -103,15 +101,13 @@ export default function FacilitiesWidget({ onUpgrade, inventory }: FacilitiesWid
   }
 
   const upgradeFacility = async (type: string) => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setUpgrading(type)
-    const res = await fetch('http://localhost:3000/api/bunker/upgrade', {
+    const res = await apiFetch('/bunker/upgrade', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ type })
     })
@@ -129,220 +125,200 @@ export default function FacilitiesWidget({ onUpgrade, inventory }: FacilitiesWid
 
   if (loading) {
     return (
-      <div style={{ border: '1px solid #FF9500', padding: 20, background: '#111', marginTop: 20 }}>
-        <h3 style={{ color: '#FF9500', marginTop: 0 }}>FACILITIES</h3>
-        <div style={{ color: '#666' }}>Scanning infrastructure...</div>
-      </div>
+      <GrimdarkCard title="INFRASTRUCTURE" status="online" style={{ marginTop: 20 }}>
+        <div style={{ color: '#555', fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          &gt; Scanning infrastructure...
+        </div>
+      </GrimdarkCard>
     )
   }
 
   return (
-    <div style={{ border: '1px solid #FF9500', padding: 20, background: '#111', marginTop: 20 }}>
-      <h3 style={{ color: '#FF9500', marginTop: 0, marginBottom: 15 }}>FACILITIES</h3>
+    <GrimdarkCard title="INFRASTRUCTURE" status="online" style={{ marginTop: 20 }}>
+      <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {facilities.map(facility => {
+            const config = FACILITY_CONFIG[facility.type]
+            const cost = getUpgradeCost(facility.type, facility.level)
+            const isMaxLevel = facility.level >= MAX_LEVEL
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 15 }}>
-        {facilities.map(facility => {
-          const config = FACILITY_CONFIG[facility.type]
-          const cost = getUpgradeCost(facility.type, facility.level)
-          const isMaxLevel = facility.level >= MAX_LEVEL
+            return (
+              <div
+                key={facility.type}
+                onClick={() => setSelectedFacility(facility)}
+                style={{
+                  background: '#0E0E0E',
+                  border: `1px solid ${config.color}30`,
+                  padding: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = config.color
+                  e.currentTarget.style.boxShadow = `0 0 10px ${config.color}30`
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = `${config.color}30`
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: '1.3rem' }}>{config.icon}</span>
+                  <span style={{
+                    color: config.color,
+                    fontSize: '0.95rem',
+                    textShadow: `0 0 5px ${config.color}40`,
+                  }}>
+                    [LVL: {facility.level}]
+                  </span>
+                </div>
 
-          return (
-            <div
-              key={facility.type}
-              onClick={() => setSelectedFacility(facility)}
-              style={{
-                background: '#0A0A0A',
-                border: `1px solid ${config.color}40`,
-                padding: 15,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = config.color
-                e.currentTarget.style.boxShadow = `0 0 10px ${config.color}40`
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = `${config.color}40`
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            >
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: '1.5rem' }}>{config.icon}</span>
-                <span style={{
-                  background: config.color,
-                  color: 'black',
-                  padding: '2px 8px',
-                  fontSize: '0.75rem',
-                  fontWeight: 'bold'
-                }}>
-                  LVL {facility.level}
-                </span>
-              </div>
-
-              {/* Name */}
-              <div style={{ color: config.color, fontWeight: 'bold', marginBottom: 5 }}>
-                {config.name}
-              </div>
-
-              {/* Level Progress Bar */}
-              <div style={{ background: '#222', height: 4, marginBottom: 10 }}>
                 <div style={{
-                  background: config.color,
-                  height: '100%',
-                  width: `${(facility.level / MAX_LEVEL) * 100}%`,
-                  transition: 'width 0.3s ease'
-                }} />
-              </div>
+                  color: config.color,
+                  marginBottom: 8,
+                  fontSize: '1rem',
+                  letterSpacing: '0.1em',
+                }}>
+                  {config.name}
+                </div>
 
-              {/* Status */}
-              <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                {isMaxLevel ? (
-                  <span style={{ color: '#00FF9D' }}>MAX LEVEL</span>
-                ) : cost ? (
-                  <span>Upgrade: {cost.credits} CR</span>
-                ) : null}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+                <GrimdarkProgressBar
+                  value={facility.level}
+                  max={MAX_LEVEL}
+                  variant={isMaxLevel ? 'primary' : 'warning'}
+                  width={10}
+                />
 
-      {/* Default facilities if none exist */}
-      {facilities.length === 0 && (
-        <div style={{ color: '#666', textAlign: 'center', padding: 20 }}>
-          No facilities initialized. Contact support.
+                <div style={{ fontSize: '0.9rem', color: '#555', marginTop: 6 }}>
+                  {isMaxLevel ? (
+                    <span style={{ color: '#00FF9D' }}>MAX LEVEL</span>
+                  ) : cost ? (
+                    <span>[COST: {cost.credits} CR]</span>
+                  ) : null}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      )}
 
-      {/* Upgrade Modal */}
-      {selectedFacility && (
-        <div
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 1000
-          }}
-          onClick={() => setSelectedFacility(null)}
-        >
+        {facilities.length === 0 && (
+          <div style={{ color: '#555', textAlign: 'center', padding: 20 }}>
+            No facilities initialized. Contact support.
+          </div>
+        )}
+
+        {/* Upgrade Modal */}
+        {selectedFacility && (
           <div
             style={{
-              background: '#111', border: `1px solid ${FACILITY_CONFIG[selectedFacility.type].color}`,
-              padding: 25, maxWidth: 400, width: '90%'
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedFacility(null)}
           >
-            {/* Modal Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>
-              <span style={{ fontSize: '2rem' }}>{FACILITY_CONFIG[selectedFacility.type].icon}</span>
-              <div>
-                <h3 style={{ color: FACILITY_CONFIG[selectedFacility.type].color, margin: 0 }}>
-                  {FACILITY_CONFIG[selectedFacility.type].name}
-                </h3>
-                <div style={{ color: '#888', fontSize: '0.85rem' }}>
-                  Current Level: {selectedFacility.level}
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: 20 }}>
-              {FACILITY_CONFIG[selectedFacility.type].description}
-            </p>
-
-            {/* Upgrade Cost */}
-            {selectedFacility.level < MAX_LEVEL ? (
-              <>
-                <div style={{ 
-                  background: '#0A0A0A', 
-                  padding: 15, 
-                  marginBottom: 15,
-                  border: '1px solid #333' 
-                }}>
-                  <div style={{ color: '#888', fontSize: '0.8rem', marginBottom: 10 }}>
-                    UPGRADE TO LEVEL {selectedFacility.level + 1}
-                  </div>
-                  {(() => {
-                    const cost = getUpgradeCost(selectedFacility.type, selectedFacility.level)
-                    if (!cost) return null
-                    return (
-                      <>
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          marginBottom: 8,
-                          color: '#FFD700'
-                        }}>
-                          <span>Credits</span>
-                          <span>{cost.credits}</span>
-                        </div>
-                        {cost.items?.map(item => (
-                          <div 
-                            key={item.item}
-                            style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between',
-                              color: getInventoryQuantity(item.item) >= item.quantity ? '#00FF9D' : '#FF0055'
-                            }}
-                          >
-                            <span>{item.item.replace(/_/g, ' ')}</span>
-                            <span>
-                              {getInventoryQuantity(item.item)} / {item.quantity}
-                            </span>
-                          </div>
-                        ))}
-                      </>
-                    )
-                  })()}
-                </div>
-
-                <button
-                  onClick={() => upgradeFacility(selectedFacility.type)}
-                  disabled={upgrading !== null || !canAffordUpgrade(selectedFacility)}
-                  style={{
-                    width: '100%',
-                    background: canAffordUpgrade(selectedFacility) 
-                      ? FACILITY_CONFIG[selectedFacility.type].color 
-                      : '#333',
-                    color: canAffordUpgrade(selectedFacility) ? 'black' : '#666',
-                    border: 'none',
-                    padding: '12px',
-                    fontWeight: 'bold',
-                    cursor: canAffordUpgrade(selectedFacility) ? 'pointer' : 'not-allowed',
-                    marginBottom: 10
-                  }}
-                >
-                  {upgrading === selectedFacility.type 
-                    ? 'UPGRADING...' 
-                    : canAffordUpgrade(selectedFacility) 
-                      ? '⬆ UPGRADE FACILITY' 
-                      : 'INSUFFICIENT RESOURCES'}
-                </button>
-              </>
-            ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#00FF9D', 
-                padding: 20,
-                background: '#00FF9D10',
-                marginBottom: 10
-              }}>
-                ✓ MAXIMUM LEVEL REACHED
-              </div>
-            )}
-
-            <button
-              onClick={() => setSelectedFacility(null)}
-              style={{
-                width: '100%', background: 'transparent', color: '#666',
-                border: '1px solid #333', padding: '10px', cursor: 'pointer'
-              }}
+            <GrimdarkCard
+              title={FACILITY_CONFIG[selectedFacility.type].name}
+              status={selectedFacility.level >= MAX_LEVEL ? 'online' : 'warning'}
+              style={{ maxWidth: 400, width: '90%' }}
             >
-              CLOSE
-            </button>
+              <div onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: '1.8rem' }}>{FACILITY_CONFIG[selectedFacility.type].icon}</span>
+                  <div>
+                    <div style={{ color: '#888', fontSize: '0.95rem' }}>
+                      [LVL: {selectedFacility.level}]
+                    </div>
+                  </div>
+                </div>
+
+                <p style={{ color: '#888', fontSize: '1rem', marginBottom: 15 }}>
+                  {FACILITY_CONFIG[selectedFacility.type].description}
+                </p>
+
+                {selectedFacility.level < MAX_LEVEL ? (
+                  <>
+                    <div style={{
+                      background: '#0A0A0A',
+                      padding: 12,
+                      marginBottom: 12,
+                      border: '1px solid #2A2A2A'
+                    }}>
+                      <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: 8 }}>
+                        &gt; UPGRADE TO LEVEL {selectedFacility.level + 1}
+                      </div>
+                      {(() => {
+                        const cost = getUpgradeCost(selectedFacility.type, selectedFacility.level)
+                        if (!cost) return null
+                        return (
+                          <>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              marginBottom: 6,
+                              color: '#FFA500'
+                            }}>
+                              <span>Credits</span>
+                              <span>[{cost.credits}]</span>
+                            </div>
+                            {cost.items?.map(item => (
+                              <div
+                                key={item.item}
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  color: getInventoryQuantity(item.item) >= item.quantity ? '#00FF9D' : '#CC0000'
+                                }}
+                              >
+                                <span>{item.item.replace(/_/g, ' ')}</span>
+                                <span>
+                                  [{getInventoryQuantity(item.item)} / {item.quantity}]
+                                </span>
+                              </div>
+                            ))}
+                          </>
+                        )
+                      })()}
+                    </div>
+
+                    <GrimdarkButton
+                      onClick={() => upgradeFacility(selectedFacility.type)}
+                      disabled={upgrading !== null || !canAffordUpgrade(selectedFacility)}
+                      variant={canAffordUpgrade(selectedFacility) ? 'primary' : 'danger'}
+                      style={{ width: '100%', marginBottom: 8 }}
+                    >
+                      {upgrading === selectedFacility.type
+                        ? 'UPGRADING...'
+                        : canAffordUpgrade(selectedFacility)
+                          ? 'UPGRADE FACILITY'
+                          : 'INSUFFICIENT RESOURCES'}
+                    </GrimdarkButton>
+                  </>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#00FF9D',
+                    padding: 15,
+                    background: 'rgba(0, 255, 157, 0.05)',
+                    marginBottom: 8,
+                    textShadow: '0 0 5px rgba(0, 255, 157, 0.4)',
+                  }}>
+                    ✓ MAXIMUM LEVEL REACHED
+                  </div>
+                )}
+
+                <GrimdarkButton
+                  variant="danger"
+                  onClick={() => setSelectedFacility(null)}
+                  style={{ width: '100%' }}
+                >
+                  CLOSE
+                </GrimdarkButton>
+              </div>
+            </GrimdarkCard>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </GrimdarkCard>
   )
 }

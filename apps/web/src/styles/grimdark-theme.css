@@ -1,0 +1,253 @@
+/**
+ * Grimdark Terminal Theme
+ * 
+ * Comprehensive CSS design system for the grimdark terminal UI.
+ * Includes color palette, typography, CRT effects, animations, and utilities.
+ */
+
+/* ==========================================
+   FONTS
+   ========================================== */
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+
+/* ==========================================
+   CSS CUSTOM PROPERTIES (COLOR PALETTE)
+   ========================================== */
+:root {
+  /* Core Colors */
+  --gd-bg: #0A0A0A;
+  --gd-surface: #161616;
+  --gd-surface-raised: #1E1E1E;
+  --gd-border: #2A2A2A;
+  --gd-border-active: #00CC66;
+
+  /* Primary (sickly green) */
+  --gd-primary: #00CC66;
+  --gd-primary-dim: #009944;
+  --gd-primary-bright: #00FF9D;
+
+  /* Secondary (amber warning) */
+  --gd-secondary: #FFA500;
+  --gd-secondary-dim: #CC8400;
+
+  /* Accent (blood red) */
+  --gd-accent: #CC0000;
+  --gd-accent-bright: #FF0033;
+
+  /* Text */
+  --gd-text: #00FF9D;
+  --gd-text-dim: #888888;
+  --gd-text-muted: #555555;
+  --gd-text-bright: #CCFFDD;
+
+  /* Effects */
+  --gd-glow: 0 0 5px rgba(0, 255, 157, 0.4);
+  --gd-glow-strong: 0 0 10px rgba(0, 255, 157, 0.6), 0 0 20px rgba(0, 255, 157, 0.2);
+  --gd-glow-amber: 0 0 5px rgba(255, 165, 0, 0.4);
+  --gd-glow-red: 0 0 5px rgba(204, 0, 0, 0.4);
+
+  /* Typography */
+  --gd-font-primary: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
+  --gd-font-mono: 'Share Tech Mono', 'Courier New', monospace;
+  --gd-letter-spacing: 0.1em;
+  --gd-line-height: 1.4;
+
+  /* Sizing */
+  --gd-radius: 0px; /* Sharp edges for terminal aesthetic */
+  --gd-border-width: 1px;
+}
+
+/* ==========================================
+   BASE STYLES (when .grimdark class is applied)
+   ========================================== */
+.grimdark {
+  background: var(--gd-bg);
+  color: var(--gd-text);
+  font-family: var(--gd-font-primary);
+  letter-spacing: var(--gd-letter-spacing);
+  line-height: var(--gd-line-height);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* ==========================================
+   CRT EFFECTS
+   ========================================== */
+
+/* Scanlines overlay */
+.crt-scanlines::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Screen border vignette */
+.crt-vignette::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+/* Phosphor text glow */
+.crt-glow {
+  text-shadow: var(--gd-glow);
+}
+
+.crt-glow-strong {
+  text-shadow: var(--gd-glow-strong);
+}
+
+/* Subtle screen flicker */
+.crt-flicker {
+  animation: crt-flicker 0.15s infinite alternate;
+}
+
+@keyframes crt-flicker {
+  0% { opacity: 0.97; }
+  100% { opacity: 1; }
+}
+
+/* Text flicker effect (subtle) */
+.text-flicker {
+  animation: text-flicker 4s infinite;
+}
+
+@keyframes text-flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.8; }
+  97% { opacity: 1; }
+  98% { opacity: 0.9; }
+}
+
+/* Chromatic aberration (optional) */
+.crt-aberration {
+  text-shadow:
+    -1px 0 rgba(255, 0, 0, 0.1),
+    1px 0 rgba(0, 255, 255, 0.1);
+}
+
+/* Screen curvature (optional) */
+.crt-curved {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 80px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(0, 255, 157, 0.1);
+}
+
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
+
+/* Typing cursor blink */
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '█';
+  animation: cursor-blink 1s infinite;
+  color: var(--gd-primary-bright);
+}
+
+/* Boot line appear */
+@keyframes boot-line {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade in */
+@keyframes gd-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Glitch effect */
+@keyframes glitch {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(-2px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, -1px); }
+  98% { transform: translate(1px, 1px); }
+}
+
+.glitch {
+  animation: glitch 3s infinite;
+}
+
+/* Pulse glow */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 157, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(0, 255, 157, 0.6); }
+}
+
+/* ==========================================
+   UTILITY CLASSES
+   ========================================== */
+
+/* Text colors */
+.gd-text-primary { color: var(--gd-text); }
+.gd-text-dim { color: var(--gd-text-dim); }
+.gd-text-muted { color: var(--gd-text-muted); }
+.gd-text-amber { color: var(--gd-secondary); }
+.gd-text-red { color: var(--gd-accent); }
+.gd-text-bright { color: var(--gd-text-bright); }
+
+/* Backgrounds */
+.gd-bg-surface { background: var(--gd-surface); }
+.gd-bg-raised { background: var(--gd-surface-raised); }
+
+/* Borders */
+.gd-border { border: var(--gd-border-width) solid var(--gd-border); }
+.gd-border-active { border: var(--gd-border-width) solid var(--gd-border-active); }
+.gd-border-amber { border: var(--gd-border-width) solid var(--gd-secondary); }
+.gd-border-red { border: var(--gd-border-width) solid var(--gd-accent); }
+
+/* ==========================================
+   ACCESSIBILITY
+   ========================================== */
+
+/* High contrast mode */
+.grimdark.high-contrast {
+  --gd-text: #FFFFFF;
+  --gd-text-dim: #CCCCCC;
+  --gd-text-muted: #999999;
+  --gd-primary-bright: #FFFFFF;
+  --gd-border: #666666;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .crt-flicker,
+  .text-flicker,
+  .glitch {
+    animation: none !important;
+  }
+
+  .crt-scanlines::after {
+    display: none;
+  }
+}

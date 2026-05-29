@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   Get,
+  Param,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -40,5 +41,11 @@ export class SwarmsController {
   @Get()
   async getSwarms(@Request() req: AuthenticatedRequest) {
     return this.swarmsService.getUserSwarms(req.user.userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':id')
+  async getSwarmById(@Param('id') id: string) {
+    return this.swarmsService.getSwarmById(id);
   }
 }

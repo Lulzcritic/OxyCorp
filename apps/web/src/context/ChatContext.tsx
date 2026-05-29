@@ -1,7 +1,6 @@
-
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/authStore';
 
 interface Message {
   sender: string;
@@ -35,14 +34,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
 
     const initSocket = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
+        const token = useAuthStore.getState().getToken();
         if (cancelled) return;
-        if (!session) return;
+        if (!token) return;
 
         // Connect to NestJS Gateway
         socketInstance = io('http://localhost:3000/chat', {
-            extraHeaders: { Authorization: `Bearer ${session.access_token}` },
-            query: { token: session.access_token } // Fallback
+            extraHeaders: { Authorization: `Bearer ${token}` },
+            query: { token } // Fallback
         });
 
         socketInstance.on('connect', () => {

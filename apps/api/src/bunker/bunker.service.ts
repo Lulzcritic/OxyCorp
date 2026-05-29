@@ -124,14 +124,16 @@ export class BunkerService {
    * Called during user creation flow.
    */
   async initializeFacilities(userId: string) {
-    const types = [
-      FacilityType.REFINING_VAT,
-      FacilityType.LOGISTICS_HUB,
-      FacilityType.COMMAND_ARRAY,
+    // Initialize facilities with appropriate starting levels
+    // COMMAND_ARRAY starts at level 3 to allow demo battles (3 drones required)
+    const facilities = [
+      { type: FacilityType.REFINING_VAT, level: 1 },
+      { type: FacilityType.LOGISTICS_HUB, level: 1 },
+      { type: FacilityType.COMMAND_ARRAY, level: 3 },
     ];
 
     await this.prisma.bunkerFacility.createMany({
-      data: types.map((type) => ({ userId, type, level: 1 })),
+      data: facilities.map((f) => ({ userId, ...f })),
       skipDuplicates: true,
     });
   }

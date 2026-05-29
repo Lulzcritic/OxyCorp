@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import GrimdarkProgressBar from './grimdark/GrimdarkProgressBar'
+import '../styles/grimdark-theme.css'
 
 interface SkillDefinition {
   id: string
@@ -25,9 +29,9 @@ interface SkillsData {
 }
 
 const TREE_COLORS: Record<string, string> = {
-  COGITATOR: '#00F3FF', // Cyan
-  FORGE: '#FF0055',     // Red
-  MERCHANT: '#00FF9D',  // Green
+  COGITATOR: '#00F3FF',
+  FORGE: '#FF0055',
+  MERCHANT: '#00FF9D',
 }
 
 interface SkillsWidgetProps {
@@ -41,11 +45,9 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
   const [unlocking, setUnlocking] = useState(false)
 
   const fetchSkills = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/skills', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const res = await apiFetch('/skills', {
     })
 
     if (res.ok) {
@@ -72,15 +74,13 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
   }
 
   const unlockSkill = async (skillId: string) => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setUnlocking(true)
-    const res = await fetch('http://localhost:3000/api/skills/unlock', {
+    const res = await apiFetch('/skills/unlock', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ skillId })
     })
@@ -98,10 +98,11 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
 
   if (loading) {
     return (
-      <div style={{ border: '1px solid #333', padding: 20, background: '#111', marginTop: 20 }}>
-        <h3 style={{ color: '#00F3FF', marginTop: 0 }}>THE CORTEX</h3>
-        <div style={{ color: '#666' }}>Syncing neural pathways...</div>
-      </div>
+      <GrimdarkCard title="THE CORTEX" status="online" style={{ marginTop: 20 }}>
+        <div style={{ color: '#555', fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          &gt; Syncing neural pathways...
+        </div>
+      </GrimdarkCard>
     )
   }
 
@@ -119,23 +120,56 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
     }
   })
 
+  const unlockedCount = data.unlockedSkills.length
+  const totalSkills = data.availableSkills.length
+
   return (
-    <div style={{ border: '1px solid #333', padding: 20, background: '#111', marginTop: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-        <h3 style={{ color: '#00F3FF', marginTop: 0, marginBottom: 0 }}>THE CORTEX</h3>
-        <div style={{ display: 'flex', gap: 20 }}>
+    <GrimdarkCard title="THE CORTEX" status="online" style={{ marginTop: 20 }}>
+      {/* Stats Bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+        fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+        fontSize: '1rem',
+      }}>
+        <div style={{ display: 'flex', gap: 16 }}>
           <span style={{ color: '#888' }}>LEVEL <span style={{ color: '#00FF9D' }}>{data.level}</span></span>
-          <span style={{ color: '#888' }}>XP <span style={{ color: '#FFD700' }}>{data.xp}</span></span>
+          <span style={{ color: '#888' }}>XP <span style={{ color: '#FFA500' }}>{data.xp}</span></span>
           <span style={{ color: '#888' }}>SP <span style={{ color: '#FF6600' }}>{data.skillPoints}</span></span>
+        </div>
+        <div style={{ color: '#555', fontSize: '0.9rem' }}>
+          [{unlockedCount}/{totalSkills}] ACTIVE
         </div>
       </div>
 
+      {/* Progress */}
+      <GrimdarkProgressBar
+        value={unlockedCount}
+        max={totalSkills || 1}
+        label="NEURAL INTEGRATION"
+        variant="primary"
+        width={25}
+      />
+
       {/* Skill Trees */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 15 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 15 }}>
         {Object.entries(trees).map(([treeName, skills]) => (
-          <div key={treeName} style={{ border: `1px solid ${TREE_COLORS[treeName]}40`, padding: 10, background: '#0A0A0A' }}>
-            <div style={{ color: TREE_COLORS[treeName], fontSize: '0.9rem', marginBottom: 10, fontWeight: 'bold' }}>
-              {treeName}
+          <div key={treeName} style={{
+            border: `1px solid ${TREE_COLORS[treeName]}30`,
+            padding: 10,
+            background: '#0A0A0A',
+          }}>
+            <div style={{
+              color: TREE_COLORS[treeName],
+              fontSize: '1rem',
+              marginBottom: 10,
+              letterSpacing: '0.15em',
+              textShadow: `0 0 5px ${TREE_COLORS[treeName]}40`,
+              fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+            }}>
+              [ {treeName} ]
             </div>
             {skills.map(skill => {
               const unlocked = isUnlocked(skill.id)
@@ -145,18 +179,23 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
                   key={skill.id}
                   onClick={() => setSelectedSkill(skill)}
                   style={{
-                    background: unlocked ? TREE_COLORS[skill.specialization || treeName] + '30' : '#1A1A1A',
-                    border: `1px solid ${unlocked ? TREE_COLORS[skill.specialization || treeName] : '#333'}`,
+                    background: unlocked ? TREE_COLORS[skill.specialization || treeName] + '15' : '#161616',
+                    border: `1px solid ${unlocked ? TREE_COLORS[skill.specialization || treeName] + '60' : '#2A2A2A'}`,
                     padding: 8,
-                    marginBottom: 8,
+                    marginBottom: 6,
                     cursor: 'pointer',
                     opacity: unlocked ? 1 : available ? 0.9 : 0.5,
+                    transition: 'all 0.15s',
+                    fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
                   }}
                 >
-                  <div style={{ fontSize: '0.85rem', color: unlocked ? TREE_COLORS[skill.specialization || treeName] : '#888' }}>
-                    {skill.name}
+                  <div style={{
+                    fontSize: '0.95rem',
+                    color: unlocked ? TREE_COLORS[skill.specialization || treeName] : '#888',
+                  }}>
+                    {unlocked ? '▸ ' : '  '}{skill.name}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#555' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#555' }}>
                     {unlocked ? '✓ ACTIVE' : `${skill.cost} SP`}
                   </div>
                 </div>
@@ -171,57 +210,73 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
         <div
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 1000
           }}
           onClick={() => setSelectedSkill(null)}
         >
-          <div
-            style={{
-              background: '#111', border: '1px solid #333', padding: 25, maxWidth: 400, width: '90%'
-            }}
-            onClick={(e) => e.stopPropagation()}
+          <GrimdarkCard
+            title={selectedSkill.name}
+            status={isUnlocked(selectedSkill.id) ? 'online' : canUnlock(selectedSkill) ? 'warning' : 'offline'}
+            style={{ maxWidth: 400, width: '90%' }}
           >
-            <h3 style={{ color: TREE_COLORS[selectedSkill.specialization || 'COGITATOR'], marginTop: 0 }}>
-              {selectedSkill.name}
-            </h3>
-            <p style={{ color: '#888', fontSize: '0.9rem' }}>{selectedSkill.description}</p>
-            <div style={{ color: '#666', fontSize: '0.8rem', marginBottom: 15 }}>
-              Cost: {selectedSkill.cost} SP
-              {selectedSkill.prereq && <span> | Requires: {selectedSkill.prereq}</span>}
-            </div>
-
-            {isUnlocked(selectedSkill.id) ? (
-              <div style={{ color: '#00FF9D', textAlign: 'center' }}>✓ SKILL ACTIVE</div>
-            ) : canUnlock(selectedSkill) ? (
-              <button
-                onClick={() => unlockSkill(selectedSkill.id)}
-                disabled={unlocking}
-                style={{
-                  width: '100%', background: '#00FF9D', color: 'black',
-                  border: 'none', padding: '12px', fontWeight: 'bold', cursor: 'pointer'
-                }}
-              >
-                {unlocking ? 'UNLOCKING...' : 'UNLOCK SKILL'}
-              </button>
-            ) : (
-              <div style={{ color: '#FF0055', textAlign: 'center', fontSize: '0.9rem' }}>
-                {data.skillPoints < selectedSkill.cost ? 'INSUFFICIENT SP' : 'PREREQUISITE LOCKED'}
+            <div onClick={(e) => e.stopPropagation()}>
+              <p style={{
+                color: '#888',
+                fontSize: '1rem',
+                fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+              }}>
+                {selectedSkill.description}
+              </p>
+              <div style={{
+                color: '#555',
+                fontSize: '0.9rem',
+                marginBottom: 15,
+                fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+              }}>
+                Cost: {selectedSkill.cost} SP
+                {selectedSkill.prereq && <span> | Requires: {selectedSkill.prereq}</span>}
               </div>
-            )}
 
-            <button
-              onClick={() => setSelectedSkill(null)}
-              style={{
-                width: '100%', background: 'transparent', color: '#666',
-                border: '1px solid #333', padding: '10px', marginTop: 10, cursor: 'pointer'
-              }}
-            >
-              CLOSE
-            </button>
-          </div>
+              {isUnlocked(selectedSkill.id) ? (
+                <div style={{
+                  color: '#00FF9D',
+                  textAlign: 'center',
+                  fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+                  textShadow: '0 0 5px rgba(0, 255, 157, 0.4)',
+                }}>
+                  ✓ SKILL ACTIVE
+                </div>
+              ) : canUnlock(selectedSkill) ? (
+                <GrimdarkButton
+                  onClick={() => unlockSkill(selectedSkill.id)}
+                  disabled={unlocking}
+                  style={{ width: '100%' }}
+                >
+                  {unlocking ? 'UNLOCKING...' : 'UNLOCK SKILL'}
+                </GrimdarkButton>
+              ) : (
+                <div style={{
+                  color: '#CC0000',
+                  textAlign: 'center',
+                  fontSize: '1rem',
+                  fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+                }}>
+                  {data.skillPoints < selectedSkill.cost ? 'INSUFFICIENT SP' : 'PREREQUISITE LOCKED'}
+                </div>
+              )}
+
+              <GrimdarkButton
+                variant="danger"
+                onClick={() => setSelectedSkill(null)}
+                style={{ width: '100%', marginTop: 10 }}
+              >
+                CLOSE
+              </GrimdarkButton>
+            </div>
+          </GrimdarkCard>
         </div>
       )}
-    </div>
+    </GrimdarkCard>
   )
 }

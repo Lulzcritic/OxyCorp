@@ -99,4 +99,10 @@ export class SwarmsService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async getSwarmById(id: string) {
+    return this.prisma.swarm.findUnique({
+      where: { id },
+    });
+  }
 }

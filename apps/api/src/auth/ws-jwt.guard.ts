@@ -21,7 +21,7 @@ export class WsJwtGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.SUPABASE_JWT_SECRET || 'super-secret-jwt-key', // fallback for dev
+        secret: process.env.JWT_SECRET || 'super-secret-jwt-key', // fallback for dev
       });
       // Attach user to socket
       (client as any).user = payload;

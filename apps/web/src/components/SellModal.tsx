@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import GrimdarkInput from './grimdark/GrimdarkInput'
+import '../styles/grimdark-theme.css'
 
 interface SellModalProps {
   itemId: string
@@ -14,15 +18,13 @@ export default function SellModal({ itemId, currentQuantity, onClose, onSuccess 
   const [loading, setLoading] = useState(false)
 
   const handleSell = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
     setLoading(true)
-    const res = await fetch('http://localhost:3000/api/market/orders', {
+    const res = await apiFetch('/market/orders', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}` 
       },
       body: JSON.stringify({ 
         itemId, 
@@ -43,45 +45,56 @@ export default function SellModal({ itemId, currentQuantity, onClose, onSuccess 
   }
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center'
-    }}>
-      <div style={{ background: '#111', border: '1px solid #333', padding: 20, width: 300 }}>
-        <h3 style={{ color: '#00FF9D', marginTop: 0 }}>SELL {itemId}</h3>
-        <p>Available: {currentQuantity}</p>
-        
-        <div style={{ marginBottom: 10 }}>
-          <label style={{ display: 'block', color: '#888' }}>Quantity</label>
-          <input 
-            type="number" 
-            value={quantity} 
+    <div
+      className="crt-scanlines"
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+        zIndex: 1000,
+      }}
+    >
+      <GrimdarkCard title={`SELL ${itemId}`} status="warning" style={{ width: 320 }}>
+        <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          <div style={{ color: '#888', marginBottom: 15, fontSize: '1rem' }}>
+            Available: <span style={{ color: '#00FF9D' }}>{currentQuantity}</span>
+          </div>
+          
+          <GrimdarkInput
+            label="QUANTITY"
+            type="number"
+            value={quantity}
             onChange={e => setQuantity(Number(e.target.value))}
-            style={{ width: '100%', background: '#222', border: '1px solid #444', color: 'white', padding: 5 }}
+            style={{ marginBottom: 12 }}
           />
-        </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', color: '#888' }}>Price Per Unit</label>
-          <input 
-            type="number" 
-            value={price} 
+          <GrimdarkInput
+            label="PRICE PER UNIT"
+            type="number"
+            value={price}
             onChange={e => setPrice(Number(e.target.value))}
-            style={{ width: '100%', background: '#222', border: '1px solid #444', color: 'white', padding: 5 }}
+            style={{ marginBottom: 15 }}
           />
-        </div>
-        
-        <div style={{ textAlign: 'right', color: '#FFD700', marginBottom: 20 }}>
-          Total Value: {quantity * price} Credits
-        </div>
+          
+          <div style={{
+            textAlign: 'right',
+            color: '#FFA500',
+            marginBottom: 15,
+            fontSize: '1.1rem',
+            textShadow: '0 0 5px rgba(255, 165, 0, 0.3)',
+          }}>
+            [TOTAL: ₡{quantity * price}]
+          </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, background: '#333', color: 'white', border: 'none', padding: 10, cursor: 'pointer' }}>CANCEL</button>
-          <button onClick={handleSell} disabled={loading} style={{ flex: 1, background: '#00FF9D', color: 'black', border: 'none', padding: 10, cursor: 'pointer', fontWeight: 'bold' }}>
-            {loading ? '...' : 'CONFIRM LISTING'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <GrimdarkButton variant="danger" onClick={onClose} style={{ flex: 1 }}>
+              CANCEL
+            </GrimdarkButton>
+            <GrimdarkButton onClick={handleSell} disabled={loading} style={{ flex: 1 }}>
+              {loading ? '...' : 'LIST ITEM'}
+            </GrimdarkButton>
+          </div>
         </div>
-      </div>
+      </GrimdarkCard>
     </div>
   )
 }

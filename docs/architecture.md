@@ -109,6 +109,19 @@ graph TD
 - `drones`: JSON (Array of drone IDs/Stats)
 - `status`: Enum (IDLE | DEPLOYED | DESTROYED)
 
+### Drone Variant (Drone Stats)
+
+**Purpose:** Defines base statistics for drone types (replacing hardcoded values).
+
+- `id`: String (PK) - Matches `item` ID (e.g., 'DRONE_ATTACK_V1')
+- `name`: String
+- `attack`: Int
+- `defense`: Int
+- `speed`: Int
+- `health`: Int
+- `description`: String
+- `created_at`: Timestamp
+
 ### Chat Message
 
 **Purpose:** Stores global chat messages for history and moderation.

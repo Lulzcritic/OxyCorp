@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
+import '../styles/grimdark-theme.css';
 
 interface Sector {
   x: string;
@@ -20,7 +21,7 @@ interface MapGridProps {
 }
 
 const CELL_SIZE = 50;
-const RADIUS = 5; // View radius (5 means 11x11 grid)
+const RADIUS = 5;
 
 export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector, selectedSectorId, currentUserId }: MapGridProps) {
   const [centerX, setCenterX] = useState(BigInt(initialCenterX));
@@ -30,13 +31,7 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
 
   const fetchSectors = useCallback(async () => {
     setLoading(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
 
-    // Fetch area: center +/- radius
-    // API expects BigInt string format
     const query = new URLSearchParams({
       x: centerX.toString(),
       y: centerY.toString(),
@@ -44,9 +39,7 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
     });
 
     try {
-      const res = await fetch(`http://localhost:3000/api/map/sectors?${query}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      const res = await apiFetch(`/map/sectors?${query}`);
       if (res.ok) {
         const data = await res.json();
         setSectors(data);
@@ -60,16 +53,11 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
 
   useEffect(() => {
     fetchSectors();
-  }, [fetchSectors]); // fetchSectors is stable if useCallback is used, or suppressed if deemed safe.
-  // Actually, let's wrap fetchSectors in useCallback to satisfy linter properly
+  }, [fetchSectors]);
 
-  // Generate grid cells for rendering
-  // We want to render a perfect square grid from -RADIUS to +RADIUS relative to center
   const gridCells = [];
   const range = Array.from({ length: RADIUS * 2 + 1 }, (_, i) => i - RADIUS);
-  // Y loop (Top to Bottom: y decreasing)
   for (const dy of [...range].reverse()) {
-    // X loop (Left to Right: x increasing)
     for (const dx of range) {
       const cellX = centerX + BigInt(dx);
       const cellY = centerY + BigInt(dy);
@@ -92,43 +80,67 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
   };
 
   const getCellColor = (sector?: Sector) => {
-    if (!sector) return '#222'; // Unknown/Fog (Empty but not fetched? OR empty on map)
+    if (!sector) return '#1A1A1A';
     switch (sector.type) {
       case 'BUNKER':
-        return '#00FF9D';
+        return '#00CC6640';
       case 'RESOURCE':
-        return '#FFD700';
+        return '#FFA50040';
       case 'EMPTY':
       default:
-        return '#333';
+        return '#2A2A2A';
+    }
+  };
+
+  const getCellBorderColor = (sector?: Sector) => {
+    if (!sector) return '#1A1A1A';
+    switch (sector.type) {
+      case 'BUNKER':
+        return '#00CC66';
+      case 'RESOURCE':
+        return '#FFA500';
+      case 'EMPTY':
+      default:
+        return '#2A2A2A';
     }
   };
 
   return (
-    <div style={{ marginTop: 40, border: '1px solid #333', padding: 20, background: '#111' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h3 style={{ color: '#888', margin: 0 }}>TACTICAL MAP</h3>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ color: '#666', fontFamily: 'monospace' }}>
-            CENTER: {centerX.toString()}, {centerY.toString()}
-          </div>
+    <div style={{
+      marginTop: 20,
+      border: '1px solid #2A2A2A',
+      padding: 20,
+      background: '#0A0A0A',
+      fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
+        <div style={{
+          color: '#00CC66',
+          fontSize: '1.1rem',
+          letterSpacing: '0.15em',
+          textShadow: '0 0 5px rgba(0, 255, 157, 0.3)',
+        }}>
+          [ TACTICAL MAP ]
+        </div>
+        <div style={{ color: '#555', fontSize: '0.95rem' }}>
+          CENTER: [{centerX.toString()}, {centerY.toString()}]
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 20 }}>
+      <div style={{ display: 'flex', gap: 15 }}>
         {/* Navigation Pad */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 40px)', gap: 5, height: 'fit-content' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 36px)', gap: 4, height: 'fit-content' }}>
           <div />
           <button onClick={() => handleNav(0, 1)} style={navBtnStyle}>N</button>
           <div />
           <button onClick={() => handleNav(-1, 0)} style={navBtnStyle}>W</button>
-          <button 
-            onClick={() => { 
-                // Reset to initial center (Bunker)
-                setCenterX(BigInt(initialCenterX)); 
-                setCenterY(BigInt(initialCenterY)); 
-            }} 
-            style={{ ...navBtnStyle, fontSize: '10px', background: '#005533', color: 'white', border: '1px solid #00FF9D' }}
+          <button
+            onClick={() => {
+              setCenterX(BigInt(initialCenterX));
+              setCenterY(BigInt(initialCenterY));
+            }}
+            style={{ ...navBtnStyle, color: '#00FF9D', border: '1px solid #00CC66', background: '#0E1E0E' }}
             title="JUMP TO HQ"
           >
             HQ
@@ -144,62 +156,78 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${RADIUS * 2 + 1}, ${CELL_SIZE}px)`,
-            gap: 2,
-            background: '#000',
-            border: '1px solid #444',
+            gap: 1,
+            background: '#111',
+            border: '1px solid #2A2A2A',
             opacity: loading ? 0.5 : 1,
             transition: 'opacity 0.2s',
           }}
         >
           {gridCells.map((cell) => {
-             const isSelected = cell.sector && cell.sector.id === selectedSectorId;
-             return (
-            <div
-              key={`${cell.x.toString()},${cell.y.toString()}`}
-              title={`(${cell.x.toString()}, ${cell.y.toString()}) ${cell.sector?.type || 'EMPTY'}`}
-              onClick={() => cell.sector && onSelectSector && onSelectSector(cell.sector)}
-              style={{
-                width: CELL_SIZE,
-                height: CELL_SIZE,
-                background: getCellColor(cell.sector),
-                border: isSelected ? '2px solid white' : (cell.sector?.ownerId === currentUserId ? '2px solid #00FFFF' : '1px solid #222'),
-                boxShadow: cell.sector?.ownerId === currentUserId ? '0 0 10px #00FFFF' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '10px',
-                color: 'black',
-                fontWeight: 'bold',
-                cursor: cell.sector ? 'pointer' : 'default',
-                position: 'relative' // Needed for absolute positioning of labels
-              }}
-            >
-               {cell.x === centerX && cell.y === centerY && <span style={{ color: 'white' }}>+</span>}
-               {cell.sector?.type === 'BUNKER' && cell.sector.ownerId === currentUserId && (
-                 <div style={{ position: 'absolute', bottom: 2, right: 2, fontSize: '8px', color: 'black', fontWeight: 'bold' }}>HQ</div>
-               )}
-               {cell.sector?.hasOutpost && (
-                 <div style={{ position: 'absolute', top: 2, right: 2, fontSize: '10px' }}>⚡</div>
-               )}
-               {cell.sector?.type === 'RESOURCE' && cell.sector.ownerId === currentUserId && (
-                 <div style={{ position: 'absolute', bottom: 2, right: 2, fontSize: '8px', color: 'black', fontWeight: 'bold' }}>MINE</div>
-               )}
-            </div>
-          )})}
+            const isSelected = cell.sector && cell.sector.id === selectedSectorId;
+            const isOwned = cell.sector?.ownerId === currentUserId;
+            return (
+              <div
+                key={`${cell.x.toString()},${cell.y.toString()}`}
+                title={`(${cell.x.toString()}, ${cell.y.toString()}) ${cell.sector?.type || 'EMPTY'}`}
+                onClick={() => cell.sector && onSelectSector && onSelectSector(cell.sector)}
+                style={{
+                  width: CELL_SIZE,
+                  height: CELL_SIZE,
+                  background: getCellColor(cell.sector),
+                  border: isSelected
+                    ? '2px solid #FFFFFF'
+                    : isOwned
+                      ? `1px solid #00F3FF`
+                      : `1px solid ${getCellBorderColor(cell.sector)}40`,
+                  boxShadow: isOwned ? '0 0 6px rgba(0, 243, 255, 0.3)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  color: '#888',
+                  cursor: cell.sector ? 'pointer' : 'default',
+                  position: 'relative',
+                  fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+                }}
+              >
+                {cell.x === centerX && cell.y === centerY && <span style={{ color: '#00FF9D' }}>+</span>}
+                {cell.sector?.type === 'BUNKER' && cell.sector.ownerId === currentUserId && (
+                  <div style={{ position: 'absolute', bottom: 1, right: 2, fontSize: '9px', color: '#00FF9D' }}>HQ</div>
+                )}
+                {cell.sector?.hasOutpost && (
+                  <div style={{ position: 'absolute', top: 1, right: 2, fontSize: '9px', color: '#FFA500' }}>⚡</div>
+                )}
+                {cell.sector?.type === 'RESOURCE' && cell.sector.ownerId === currentUserId && (
+                  <div style={{ position: 'absolute', bottom: 1, right: 2, fontSize: '8px', color: '#FFA500' }}>▪</div>
+                )}
+              </div>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 15, marginTop: 10, fontSize: '0.85rem', color: '#555' }}>
+        <span><span style={{ color: '#00CC66' }}>■</span> BUNKER</span>
+        <span><span style={{ color: '#FFA500' }}>■</span> RESOURCE</span>
+        <span><span style={{ color: '#2A2A2A' }}>■</span> EMPTY</span>
+        <span><span style={{ color: '#00F3FF' }}>□</span> OWNED</span>
       </div>
     </div>
   );
 }
 
-const navBtnStyle = {
-  background: '#333',
-  color: '#00FF9D',
-  border: '1px solid #444',
-  height: 40,
+const navBtnStyle: React.CSSProperties = {
+  background: '#161616',
+  color: '#00CC66',
+  border: '1px solid #2A2A2A',
+  height: 36,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontWeight: 'bold' as const,
+  fontWeight: 'bold',
+  fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+  fontSize: '0.95rem',
 };

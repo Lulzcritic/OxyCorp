@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiFetch } from '../lib/api';
 import DraggableDrone from '../components/DraggableDrone';
 
 interface DronePosition {
@@ -28,12 +28,10 @@ export default function WarRoom() {
   }, []);
 
   const fetchData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
     // Fetch Inventory (Profile)
-    const resProfile = await fetch('http://localhost:3000/api/user/profile', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const resProfile = await apiFetch('/user/profile', {
     });
     if (resProfile.ok) {
       const profile = await resProfile.json();
@@ -43,8 +41,7 @@ export default function WarRoom() {
     }
 
     // Fetch Existing Swarm
-    const resSwarm = await fetch('http://localhost:3000/api/swarms', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const resSwarm = await apiFetch('/swarms', {
     });
     if (resSwarm.ok) {
       const swarms = await resSwarm.json();
@@ -89,14 +86,12 @@ export default function WarRoom() {
   const handleSave = async () => {
     setLoading(true);
     setMessage('');
-    const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    const res = await fetch('http://localhost:3000/api/swarms/save', {
+    const res = await apiFetch('/swarms/save', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}` 
         },
         body: JSON.stringify({
             name: 'Alpha Squad', // Hardcoded for MVP

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import '../styles/grimdark-theme.css'
 
 interface Listing {
   id: string
@@ -9,17 +12,33 @@ interface Listing {
   pricePerUnit: string
 }
 
-export default function MarketWidget() {
+interface MarketWidgetProps {
+  inventory?: Array<{ id: string; item: string; quantity: string }>;
+  onListingCreated?: () => void;
+}
+
+export default function MarketWidget({ inventory = [], onListingCreated }: MarketWidgetProps) {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Sell Form State
+  const [sellItem, setSellItem] = useState<string>('');
+  const [sellQuantity, setSellQuantity] = useState<number>(1);
+  const [sellPrice, setSellPrice] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Set default sell item if inventory exists
+  useEffect(() => {
+    if (inventory.length > 0 && !sellItem) {
+      setSellItem(inventory[0].item);
+    }
+  }, [inventory, sellItem]);
+
   const fetchListings = async () => {
     setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/api/market/listings', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+    const res = await apiFetch('/market/listings', {
     })
 
     if (res.ok) {
@@ -30,7 +49,6 @@ export default function MarketWidget() {
 
   useEffect(() => {
     fetchListings()
-    // Poll every 10s for new listings
     const interval = setInterval(fetchListings, 10000)
     return () => clearInterval(interval)
   }, [])
@@ -38,55 +56,227 @@ export default function MarketWidget() {
   const handleBuy = async (id: string, cost: number) => {
     if (!confirm(`Buy this listing for ${cost} Credits?`)) return
 
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch(`http://localhost:3000/api/market/buy/${id}`, {
+    const res = await apiFetch(`/market/buy/${id}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` }
     })
 
     if (res.ok) {
       alert('Purchase Successful!')
-      fetchListings() // Refresh list
-      // Ideally trigger a global refresh of credits via a context or callback
-      window.location.reload() // Brute force refresh for MVP to update header credits
+      fetchListings()
+      if (onListingCreated) onListingCreated() // refresh inventory
     } else {
       const err = await res.json()
       alert('Purchase Failed: ' + err.message)
     }
   }
 
-  if (loading && listings.length === 0) return <div style={{ padding: 20 }}>Loading Market...</div>
+  const handleSell = async () => {
+    if (!sellItem || sellQuantity <= 0 || sellPrice <= 0) return;
+    
+    setIsSubmitting(true);
+    try {
+      if (!session) return
+
+      const res = await apiFetch(`/market/orders`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemId: sellItem,
+          quantity: sellQuantity,
+          price: sellPrice
+        })
+      })
+
+      if (res.ok) {
+        alert('Listing Created Successfully!');
+        fetchListings();
+        if (onListingCreated) onListingCreated();
+      } else {
+        const err = await res.json();
+        alert('Listing Failed: ' + err.message);
+      }
+    } catch (error) {
+       console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading && listings.length === 0) {
+    return (
+      <GrimdarkCard title="GLOBAL EXCHANGE" status="online" style={{ marginTop: 20 }}>
+        <div style={{ color: '#555', fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          &gt; Connecting to exchange...
+        </div>
+      </GrimdarkCard>
+    )
+  }
+
+  const selectedInventoryItem = inventory.find(i => i.item === sellItem);
 
   return (
-    <div style={{ marginTop: 40, border: '1px solid #333', padding: 20, background: '#111' }}>
-      <h3 style={{ color: '#00FF9D', display: 'flex', justifyContent: 'space-between' }}>
-        GLOBAL EXCHANGE 
-        <button onClick={fetchListings} style={{ background: 'transparent', border: '1px solid #333', color: '#888', cursor: 'pointer' }}>↻</button>
-      </h3>
-      
-      {listings.length === 0 ? (
-        <div style={{ color: '#555', fontStyle: 'italic' }}>No active listings. Be the first to sell!</div>
-      ) : (
-        <div style={{ display: 'grid', gap: 10 }}>
-          {listings.map(l => (
-            <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#080808', padding: 10, border: '1px solid #222' }}>
+    <GrimdarkCard title="GLOBAL EXCHANGE" status="online" style={{ marginTop: 20 }}>
+      <div style={{ fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        
+        {/* SELL INTERFACE */}
+        <div style={{ 
+          background: '#0E0E0E', 
+          border: '1px solid #00FF9D', 
+          padding: '15px', 
+          marginBottom: '20px' 
+        }}>
+          <h3 style={{ color: '#00FF9D', marginTop: 0, marginBottom: '15px', fontSize: '1.2rem' }}>CREATE LISTING</h3>
+          {inventory.length === 0 ? (
+            <div style={{ color: '#888' }}>NO ITEMS IN STORAGE TO SELL.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '15px', alignItems: 'end' }}>
               <div>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{l.itemId}</span>
-                <span style={{ color: '#888', marginLeft: 10 }}>x{l.quantity}</span>
-                <div style={{ fontSize: '0.8rem', color: '#555' }}>Seller: {l.sellerName}</div>
+                <label style={{ display: 'block', color: '#888', marginBottom: '5px' }}>ITEM</label>
+                <select 
+                  value={sellItem} 
+                  onChange={(e) => setSellItem(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: '#111',
+                    color: '#FFF',
+                    border: '1px solid #333',
+                    padding: '8px',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  {inventory.map(inv => (
+                    <option key={inv.item} value={inv.item}>{inv.item} (Owned: {inv.quantity})</option>
+                  ))}
+                </select>
               </div>
-              <button 
-                onClick={() => handleBuy(l.id, Number(l.pricePerUnit) * Number(l.quantity))}
-                style={{ background: '#00FF9D', color: 'black', border: 'none', padding: '5px 15px', cursor: 'pointer', fontWeight: 'bold' }}
+
+              <div>
+                <label style={{ display: 'block', color: '#888', marginBottom: '5px' }}>QTY (Max: {selectedInventoryItem?.quantity || 0})</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max={selectedInventoryItem ? parseInt(selectedInventoryItem.quantity) : 1}
+                  value={sellQuantity}
+                  onChange={(e) => setSellQuantity(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    background: '#111',
+                    color: '#FFF',
+                    border: '1px solid #333',
+                    padding: '8px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', color: '#888', marginBottom: '5px' }}>PRICE PER UNIT (CR)</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={sellPrice}
+                  onChange={(e) => setSellPrice(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    background: '#111',
+                    color: '#FFF',
+                    border: '1px solid #333',
+                    padding: '8px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <GrimdarkButton 
+                onClick={handleSell} 
+                disabled={isSubmitting || !sellItem}
+                style={{ padding: '8px 20px', height: '37px' }}
               >
-                BUY ({Number(l.pricePerUnit) * Number(l.quantity)} CR)
-              </button>
+                {isSubmitting ? 'LISTING...' : 'SELL'}
+              </GrimdarkButton>
             </div>
-          ))}
+          )}
         </div>
-      )}
-    </div>
+
+        {/* Refresh bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' }}>
+          <span style={{ color: '#555', fontSize: '0.9rem' }}>
+            ACTIVE LISTINGS: {listings.length}
+          </span>
+          <button
+            onClick={fetchListings}
+            style={{
+              background: 'transparent',
+              border: '1px solid #2A2A2A',
+              color: '#555',
+              cursor: 'pointer',
+              padding: '4px 10px',
+              fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+              fontSize: '1rem',
+            }}
+          >
+            [REFRESH]
+          </button>
+        </div>
+
+        {listings.length === 0 ? (
+          <div style={{ color: '#555', textAlign: 'center', padding: 20 }}>
+            No active listings. Be the first to sell!
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Table Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 1fr 1fr',
+              gap: 8,
+              padding: '6px 10px',
+              borderBottom: '1px solid #2A2A2A',
+              color: '#555',
+              fontSize: '0.85rem',
+            }}>
+              <span>ITEM</span>
+              <span>QTY</span>
+              <span>₡/UNIT</span>
+              <span></span>
+            </div>
+
+            {listings.map(l => {
+              const totalCost = Number(l.pricePerUnit) * Number(l.quantity)
+              return (
+                <div key={l.id} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                  gap: 8,
+                  alignItems: 'center',
+                  background: '#0E0E0E',
+                  padding: '8px 10px',
+                  border: '1px solid #2A2A2A',
+                }}>
+                  <div>
+                    <span style={{ color: '#00FF9D' }}>{l.itemId}</span>
+                    <div style={{ fontSize: '0.8rem', color: '#444' }}>
+                      Seller: {l.sellerName}
+                    </div>
+                  </div>
+                  <span style={{ color: '#888' }}>x{l.quantity}</span>
+                  <span style={{ color: '#FFA500' }}>{l.pricePerUnit}</span>
+                  <GrimdarkButton
+                    onClick={() => handleBuy(l.id, totalCost)}
+                    size="sm"
+                  >
+                    BUY [{totalCost}]
+                  </GrimdarkButton>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </GrimdarkCard>
   )
 }

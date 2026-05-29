@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../context/ChatContext';
+import '../styles/grimdark-theme.css';
 
 export default function ChatDrawer() {
   const { isConnected, messages, sendMessage } = useChat();
@@ -9,14 +10,11 @@ export default function ChatDrawer() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [unread, setUnread] = useState(0);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (isOpen) {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
         setUnread(0);
     } else {
-        // Simple unread logic (if messages change while closed, inc unread? 
-        // Logic roughly: if last message timestamp > lastOpenedTimestamp... simplified for now)
         if (messages.length > 0) setUnread(prev => prev + 1);
     }
   }, [messages, isOpen]);
@@ -34,42 +32,43 @@ export default function ChatDrawer() {
         bottom: 0,
         right: 20,
         width: 300,
-        background: '#111',
-        border: '1px solid #333',
+        background: '#0A0A0A',
+        border: '1px solid #2A2A2A',
         borderBottom: 'none',
-        borderRadius: '8px 8px 0 0',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-        zIndex: 1000
+        boxShadow: '0 0 15px rgba(0, 0, 0, 0.6)',
+        zIndex: 1000,
+        fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
     }}>
       {/* Header */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
         style={{
-            padding: '10px 15px',
-            background: '#222',
-            color: '#00FF9D',
+            padding: '8px 12px',
+            background: '#0E0E0E',
+            color: '#00CC66',
             cursor: 'pointer',
-            fontWeight: 'bold',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderRadius: '8px 8px 0 0'
+            borderBottom: isOpen ? '1px solid #2A2A2A' : 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span>COMMS-LINK</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ letterSpacing: '0.15em', fontSize: '1rem' }}>[ COMMS-LINK ]</span>
             <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: isConnected ? '#00FF9D' : '#FF0055'
+                width: 6, height: 6, borderRadius: '50%',
+                background: isConnected ? '#00FF9D' : '#CC0000',
+                boxShadow: isConnected ? '0 0 6px #00FF9D' : '0 0 6px #CC0000',
             }} />
         </div>
         {unread > 0 && !isOpen && (
             <div style={{
-                background: '#FF0055', color: 'white',
-                borderRadius: '50%', padding: '2px 6px',
-                fontSize: '0.7rem'
+                background: '#CC0000',
+                color: 'white',
+                padding: '1px 6px',
+                fontSize: '0.85rem',
             }}>
                 {unread}
             </div>
@@ -85,50 +84,66 @@ export default function ChatDrawer() {
                 padding: 10,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 8
+                gap: 4,
             }}>
-                {messages.length === 0 && <div style={{ color: '#555', fontStyle: 'italic' }}>No signals...</div>}
+                {messages.length === 0 && (
+                  <div style={{ color: '#444', fontSize: '0.95rem' }}>
+                    &gt; No signals...
+                  </div>
+                )}
                 
                 {messages.map((m, i) => (
-                    <div key={i} style={{ fontSize: '0.9rem' }}>
-                        <span style={{ color: '#888', fontSize: '0.7rem', marginRight: 5 }}>
+                    <div key={i} style={{ fontSize: '0.95rem', lineHeight: 1.4 }}>
+                        <span style={{ color: '#444', fontSize: '0.85rem', marginRight: 4 }}>
                             [{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}]
                         </span>
-                        <span style={{ color: '#00FF9D', fontWeight: 'bold' }}>{m.sender}: </span>
-                        <span style={{ color: '#ccc' }}>{m.content}</span>
+                        <span style={{ color: '#FFA500' }}>{m.sender}: </span>
+                        <span style={{ color: '#888' }}>{m.content}</span>
                     </div>
                 ))}
                 <div ref={bottomRef} />
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSend} style={{ borderTop: '1px solid #333', display: 'flex' }}>
+            <form onSubmit={handleSend} style={{ borderTop: '1px solid #2A2A2A', display: 'flex' }}>
+                <span style={{
+                  color: '#00CC66',
+                  padding: '8px 0 8px 10px',
+                  fontSize: '1rem',
+                }}>
+                  &gt;
+                </span>
                 <input 
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     placeholder="Transmit..."
                     style={{
                         flex: 1,
-                        background: '#000',
-                        color: 'white',
+                        background: 'transparent',
+                        color: '#888',
                         border: 'none',
-                        padding: 10,
-                        outline: 'none'
+                        padding: '8px',
+                        outline: 'none',
+                        fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+                        fontSize: '1rem',
                     }}
                 />
                 <button 
                     type="submit"
                     disabled={!isConnected}
                     style={{
-                        background: '#333',
-                        color: '#00FF9D',
+                        background: 'transparent',
+                        color: '#00CC66',
                         border: 'none',
-                        padding: '0 15px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
+                        borderLeft: '1px solid #2A2A2A',
+                        padding: '0 12px',
+                        cursor: isConnected ? 'pointer' : 'not-allowed',
+                        fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+                        fontSize: '1rem',
+                        letterSpacing: '0.1em',
                     }}
                 >
-                    SEND
+                    TX
                 </button>
             </form>
         </div>

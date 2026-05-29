@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/api'
+import GrimdarkCard from './grimdark/GrimdarkCard'
+import GrimdarkButton from './grimdark/GrimdarkButton'
+import GrimdarkProgressBar from './grimdark/GrimdarkProgressBar'
+import '../styles/grimdark-theme.css'
 
 interface Job {
   id: string
@@ -29,12 +33,7 @@ export default function MiningWidget({ selectedSector, currentUserId, onJobCompl
   // Fetch Active Job
   useEffect(() => {
     async function fetchJob() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const res = await fetch('http://localhost:3000/api/jobs/active', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      })
+      const res = await apiFetch('/jobs/active')
 
       if (res.ok) {
         const text = await res.text()
@@ -68,21 +67,15 @@ export default function MiningWidget({ selectedSector, currentUserId, onJobCompl
     return () => clearInterval(interval)
   }, [job])
 
-
-
   const claimJob = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-
     setLoading(true)
-    const res = await fetch('http://localhost:3000/api/jobs/claim', {
+    const res = await apiFetch('/jobs/claim', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` }
     })
 
     if (res.ok) {
       const data = await res.json()
-      setJob(null) // Reset job to allow starting new one
+      setJob(null)
       const xpMsg = data.xpAwarded ? ` | +${data.xpAwarded} XP` : ''
       const levelMsg = data.levelUp ? ` | 🎉 LEVEL UP! Now Lvl ${data.newLevel}` : ''
       alert(`Success: +10 Iron Ore Claimed!${xpMsg}${levelMsg}`)
@@ -97,16 +90,9 @@ export default function MiningWidget({ selectedSector, currentUserId, onJobCompl
   const startMining = async (resourceId: string) => {
     if (!selectedSector) return;
 
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-
     setLoading(true)
-    const res = await fetch('http://localhost:3000/api/jobs/start', {
+    const res = await apiFetch('/jobs/start', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
-      },
       body: JSON.stringify({ type: 'MINING', sectorId: selectedSector.id, resource: resourceId })
     })
 
@@ -120,110 +106,135 @@ export default function MiningWidget({ selectedSector, currentUserId, onJobCompl
     setLoading(false)
   }
 
-  if (loading) return <div style={{ border: '1px solid #333', padding: 20 }}>Scanning...</div>
-
-  // Render Logic
-  // 1. If Active Job -> Show Timer (Sector selection irrelevant for timer view, but maybe show job location?)
-  // 2. If No Active Job -> 
-  //    a. If Sector Selected -> Show "Start Mining" (if owned + resource) OR "Empty Sector"
-  //    b. If No Sector Selected -> Show "Select a Sector on Map"
+  if (loading) {
+    return (
+      <GrimdarkCard title="RESOURCE OPS" status="online" style={{ marginTop: 20 }}>
+        <div style={{ color: '#555', fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+          &gt; Scanning deposits...
+        </div>
+      </GrimdarkCard>
+    )
+  }
 
   const renderContent = () => {
     if (job) {
-       return (
-        timeLeft > 0 ? (
-          <div>
-            <div style={{ fontSize: '1.2rem', marginBottom: 10 }}>Miners Deployed</div>
-            <div style={{ fontSize: '2rem', color: '#00FF9D' }}>T-MINUS {timeLeft}s</div>
-            <div style={{ fontSize: '0.8rem', color: '#666', marginTop: 5 }}>Extracting: {job.rewardItemId}</div>
+      const totalDuration = job.durationSeconds
+      const elapsed = totalDuration - timeLeft
+      const progressPct = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 100
+
+      return timeLeft > 0 ? (
+        <div>
+          <div style={{
+            color: '#00CC66',
+            fontSize: '1.1rem',
+            marginBottom: 12,
+            textShadow: '0 0 5px rgba(0, 255, 157, 0.3)',
+          }}>
+            &gt; MINERS DEPLOYED
           </div>
-        ) : (
-          <div>
-            <div style={{ fontSize: '1.2rem', marginBottom: 10, color: '#FFD700' }}>Extraction Complete</div>
-            <button 
-             onClick={claimJob}
-             style={{ background: '#FFD700', color: 'black', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}
-           >
-             COLLECT RESOURCES
-           </button>
+          <div style={{
+            fontSize: '2rem',
+            color: '#00FF9D',
+            fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+            textShadow: '0 0 10px rgba(0, 255, 157, 0.5)',
+            marginBottom: 12,
+          }}>
+            T-MINUS {timeLeft}s
           </div>
-        )
-       )
+          <GrimdarkProgressBar value={progressPct} label="EXTRACTION PROGRESS" />
+          <div style={{ fontSize: '0.9rem', color: '#555', marginTop: 8 }}>
+            Extracting: {job.rewardItemId}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{
+            color: '#FFA500',
+            fontSize: '1.2rem',
+            marginBottom: 12,
+            textShadow: '0 0 5px rgba(255, 165, 0, 0.4)',
+          }}>
+            &gt; EXTRACTION COMPLETE
+          </div>
+          <GrimdarkButton variant="warning" onClick={claimJob} style={{ width: '100%' }}>
+            COLLECT RESOURCES
+          </GrimdarkButton>
+        </div>
+      )
     }
 
     if (!selectedSector) {
-      return <div style={{ color: '#666' }}>SELECT A SECTOR TO INITIATE MINING OPS</div>
+      return (
+        <div style={{ color: '#555', textAlign: 'center', padding: 20 }}>
+          SELECT A SECTOR TO INITIATE MINING OPS
+        </div>
+      )
     }
 
     if (selectedSector.type !== 'RESOURCE') {
       return (
         <div>
-           <div style={{ color: '#888', marginBottom: 10 }}>SECTOR {selectedSector.id.substring(0,4)}</div>
-           <div style={{ color: '#555' }}>SECTOR TYPE: {selectedSector.type}</div>
-           <div style={{ color: '#555', fontSize: '0.8rem' }}>No harvestable resources.</div>
+          <div style={{ color: '#888', marginBottom: 8 }}>
+            SECTOR {selectedSector.id.substring(0, 4)}
+          </div>
+          <div style={{ color: '#555' }}>TYPE: {selectedSector.type}</div>
+          <div style={{ color: '#444', fontSize: '0.9rem' }}>No harvestable resources.</div>
         </div>
       )
     }
 
-    // It is a RESOURCE sector. Check ownership.
     if (selectedSector.ownerId !== currentUserId) {
-       return (
+      return (
         <div>
-           <div style={{ color: '#FF0055', marginBottom: 10 }}>SECTOR LOCKED</div>
-           <div style={{ color: '#888' }}>Owner ID Mismatch</div>
-           <div style={{ color: '#666', fontSize: '0.8rem' }}>You do not have mining rights.</div>
-           <div style={{ color: '#444', fontSize: '0.7rem', marginTop: 10 }}>
-             Sector Owner: {selectedSector.ownerId?.substring(0, 8)}...
-             <br/>
-             Your ID: {currentUserId?.substring(0, 8)}...
-           </div>
+          <div style={{
+            color: '#CC0000',
+            marginBottom: 8,
+            textShadow: '0 0 5px rgba(204, 0, 0, 0.3)',
+          }}>
+            &gt; SECTOR LOCKED
+          </div>
+          <div style={{ color: '#888' }}>Owner ID Mismatch</div>
+          <div style={{ color: '#555', fontSize: '0.85rem' }}>You do not have mining rights.</div>
+          <div style={{ color: '#444', fontSize: '0.8rem', marginTop: 8 }}>
+            Sector Owner: {selectedSector.ownerId?.substring(0, 8)}...
+            <br/>
+            Your ID: {currentUserId?.substring(0, 8)}...
+          </div>
         </div>
-       )
+      )
     }
 
-    // Owned + Resource + No Active Job
-    // Safe access to resources
     const res = selectedSector.resources;
     const resourceType = res ? res.type : 'UNKNOWN';
-    // We Map 'IRON' -> 'IRON_ORE' manually or just pass it if backend handles it.
-    // Backend `startJob` uses `rewardItemId`. Let's assume ITEM IDs are `IRON_ORE`, `COPPER_ORE`, `SILICA`.
-    // My generator produces `IRON`, `COPPER`. I should align them.
-    // For now I will assume suffix `_ORE` except for silica which might be `SILICA`.
-
     const itemMap: Record<string, string> = {
       'IRON': 'IRON_ORE',
       'COPPER': 'COPPER_ORE',
-      'SILICA': 'SILICA' 
+      'SILICA': 'SILICA'
     };
     const rewardId = itemMap[resourceType] || 'IRON_ORE';
 
     return (
-        <div>
-           <div style={{ marginBottom: 5, color: '#00FF9D' }}>DEPOSIT: {resourceType}</div>
-           <div style={{ marginBottom: 15, fontSize: '0.8rem', color: '#888' }}>
-             Yield: {res ? (res.richness * 100).toFixed(0) : 100}% | Est. Qty: {res ? res.quantity : '???'}
-           </div>
-           <button 
-             onClick={() => startMining(rewardId)}
-             style={{ 
-               background: '#00FF9D', color: 'black', border: 'none', 
-               padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', width: '100%' 
-             }}
-           >
-             INITIATE EXTRACTION
-           </button>
+      <div>
+        <div style={{
+          color: '#00FF9D',
+          marginBottom: 8,
+          textShadow: '0 0 5px rgba(0, 255, 157, 0.3)',
+        }}>
+          &gt; DEPOSIT: {resourceType}
         </div>
+        <div style={{ marginBottom: 15, fontSize: '0.9rem', color: '#888' }}>
+          Yield: {res ? (res.richness * 100).toFixed(0) : 100}% | Est. Qty: {res ? res.quantity : '???'}
+        </div>
+        <GrimdarkButton onClick={() => startMining(rewardId)} style={{ width: '100%' }}>
+          INITIATE EXTRACTION
+        </GrimdarkButton>
+      </div>
     )
   }
 
-
-
-  // Render Logic
-
   return (
-    <div style={{ border: '1px solid #333', padding: 20, background: '#111', marginTop: 20, minHeight: 150, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <h3 style={{ color: '#888', marginTop: 0 }}>RESOURCE OPS</h3>
+    <GrimdarkCard title="RESOURCE OPS" status="online" style={{ marginTop: 20 }}>
       {renderContent()}
-    </div>
+    </GrimdarkCard>
   )
 }

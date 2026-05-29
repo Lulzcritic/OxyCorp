@@ -1,196 +1,263 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import MiningWidget from './MiningWidget'
-import RefiningWidget from './RefiningWidget'
-import SkillsWidget from './SkillsWidget'
-import DirectivesWidget from './DirectivesWidget'
-import FacilitiesWidget from './FacilitiesWidget'
-import SellModal from './SellModal'
-import MarketWidget from './MarketWidget'
-import SectorDetailPanel from './SectorDetailPanel'
+/**
+ * Dashboard Component
+ * 
+ * Main interface with optional terminal system integration via feature flag.
+ * When VITE_USE_TERMINALS is enabled, shows terminal access buttons.
+ * Otherwise, renders widgets directly for backward compatibility.
+ */
 
-import MapGrid from './MapGrid'
+import { useState, useEffect } from 'react';
+import '../styles/grimdark-theme.css';
+import { apiFetch } from '../lib/api';
+import { useAuthStore } from '../stores/authStore';
+import { useTerminalStore } from '../services/TerminalManager';
+import { TerminalType } from '../types/terminal';
+import TerminalOverlay from './terminals/TerminalOverlay';
+
+// Import widgets for direct rendering mode
+import SkillsWidget from './SkillsWidget';
+import MiningWidget from './MiningWidget';
+import RefiningWidget from './RefiningWidget';
+import DirectivesWidget from './DirectivesWidget';
+import FacilitiesWidget from './FacilitiesWidget';
+import MarketWidget from './MarketWidget';
 
 interface UserProfile {
-  id: string
-  username: string
-  credits: string
-  bunker_level: number
-  inventory: { item: string; quantity: string }[]
-  sectors: { x: string; y: string; type: string }[]
+  username: string;
+  credits: number;
+  bunkerLevel: number;
 }
 
+const USE_TERMINALS = import.meta.env.VITE_USE_TERMINALS === 'true';
+
 export default function Dashboard() {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isSellModalOpen, setIsSellModalOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<{ id: string; qty: string } | null>(null)
-  const [selectedSector, setSelectedSector] = useState<{ 
-    id: string;
-    x: string;
-    y: string;
-    type: string; 
-    ownerId?: string; 
-    resources?: { type: string; quantity: number; richness: number };
-  } | null>(null)
-  const [questRefreshTrigger, setQuestRefreshTrigger] = useState(0)
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [userId, setUserId] = useState<string>('');
+  const openTerminal = useTerminalStore((state) => state.openTerminal);
 
   useEffect(() => {
-    async function initProfile() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const token = session.access_token
+    fetchProfile();
+    fetchUserId();
+  }, []);
 
-      // 1. Onboard (Idempotent)
-      await fetch('http://localhost:3000/api/user/onboard', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+  const fetchProfile = async () => {
+    try {
+      const res = await apiFetch('/user/profile');
 
-      // 2. Fetch Profile
-      const res = await fetch('http://localhost:3000/api/user/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
       if (res.ok) {
-        const data = await res.json()
-        setProfile(data)
+        const data = await res.json();
+        setProfile(data);
+      } else {
+        console.error('Failed to fetch profile:', res.statusText);
       }
-      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     }
+  };
 
-    initProfile()
-  }, [])
-
-  const handleRefresh = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-    const res = await fetch('http://localhost:3000/api/user/profile', {
-      headers: { Authorization: `Bearer ${session.access_token}` }
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setProfile(data)
+  const fetchUserId = async () => {
+    const user = useAuthStore.getState().user;
+    if (user) {
+      setUserId(user.id);
     }
-    // Trigger quest refresh (for mining/refining progress updates)
-    setQuestRefreshTrigger(prev => prev + 1)
+  };
+
+  const handleLogout = async () => {
+    await useAuthStore.getState().logout();
+    window.location.reload();
+  };
+
+  if (!profile) {
+    return (
+      <div className="grimdark" style={{ background: 'var(--gd-bg)', color: 'var(--gd-text)', minHeight: '100vh', padding: 20, fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        &gt; Loading bunker systems...
+      </div>
+    );
   }
 
-  const openSellModal = (item: string, qty: string) => {
-    setSelectedItem({ id: item, qty })
-    setIsSellModalOpen(true)
+  // Terminal Mode: Show terminal access buttons
+  if (USE_TERMINALS) {
+    return (
+      <div className="grimdark" style={{ background: 'var(--gd-bg)', color: 'var(--gd-text)', minHeight: '100vh', padding: 20, fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
+          <div>
+            <h1 style={{ margin: 0, color: '#00FF9D', letterSpacing: '0.15em', textShadow: '0 0 10px rgba(0, 255, 157, 0.3)' }}>OXYCORP BUNKER</h1>
+            <div style={{ color: '#555', fontSize: '1rem' }}>OPERATOR: <span style={{ color: '#888' }}>{profile.username}</span></div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ color: '#FFA500', fontSize: '1.3rem', textShadow: '0 0 5px rgba(255, 165, 0, 0.3)' }}>[CREDITS: ₡{profile.credits.toLocaleString()}]</div>
+            <div style={{ color: '#00F3FF', textShadow: '0 0 5px rgba(0, 243, 255, 0.3)' }}>[BUNKER LVL {profile.bunkerLevel}]</div>
+          </div>
+        </div>
+
+        {/* Terminal Access Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, maxWidth: 1200 }}>
+          <TerminalButton
+            title="NEURAL CONDITIONING"
+            subtitle="Skills & Development"
+            color="#00F3FF"
+            onClick={() => openTerminal(TerminalType.CRYOPOD)}
+          />
+          <TerminalButton
+            title="OPERATIONS COMMAND"
+            subtitle="Mining, Refining, Map"
+            color="#00FF9D"
+            onClick={() => openTerminal(TerminalType.CONTROL_CENTER)}
+          />
+          <TerminalButton
+            title="COMMUNICATIONS"
+            subtitle="Directives & Chat"
+            color="#FFD700"
+            onClick={() => openTerminal(TerminalType.COMM)}
+          />
+          <TerminalButton
+            title="INFRASTRUCTURE"
+            subtitle="Facilities Management"
+            color="#FF6600"
+            onClick={() => openTerminal(TerminalType.BUNKER_MANAGEMENT)}
+          />
+          <TerminalButton
+            title="LOGISTICS & TRADE"
+            subtitle="Market Operations"
+            color="#00FFAA"
+            onClick={() => openTerminal(TerminalType.MARKET)}
+          />
+          <TerminalButton
+            title="TACTICAL COMMAND"
+            subtitle="Combat Systems"
+            color="#FF0055"
+            onClick={() => openTerminal(TerminalType.WAR_ROOM)}
+          />
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          style={{
+            marginTop: 40,
+            background: 'transparent',
+            border: '1px solid #666',
+            color: '#666',
+            padding: '10px 20px',
+            cursor: 'pointer',
+          }}
+        >
+          LOGOUT
+        </button>
+
+        {/* Terminal Overlay */}
+        <TerminalOverlay />
+      </div>
+    );
   }
 
-  if (loading) return <div style={{ background: '#050505', color: '#00FF9D', height: '100vh', padding: 20 }}>Initializing System...</div>
-
+  // Classic Mode: Direct widget rendering
   return (
-    <div style={{ padding: 20, background: '#050505', color: '#00FF9D', minHeight: '100vh', fontFamily: 'monospace' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: 20 }}>
-        <h1>COMMAND CENTER</h1>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button 
-            onClick={() => window.location.href = '/war-room'}
-            style={{ background: '#00FF9D', color: 'black', border: 'none', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            WAR ROOM
-          </button>
-          <button 
-            onClick={() => supabase.auth.signOut()}
-            style={{ background: '#FF0055', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer' }}
-          >
-            LOGOUT
-          </button>
+    <div className="grimdark" style={{ background: 'var(--gd-bg)', color: 'var(--gd-text)', minHeight: '100vh', padding: 20, fontFamily: "var(--gd-font-primary, 'VT323', monospace)" }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
+        <div>
+          <h1 style={{ margin: 0, color: '#00FF9D', letterSpacing: '0.15em', textShadow: '0 0 10px rgba(0, 255, 157, 0.3)' }}>OXYCORP BUNKER</h1>
+          <div style={{ color: '#555', fontSize: '1rem' }}>OPERATOR: <span style={{ color: '#888' }}>{profile.username}</span></div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: '#FFA500', fontSize: '1.3rem', textShadow: '0 0 5px rgba(255, 165, 0, 0.3)' }}>[CREDITS: ₡{profile.credits.toLocaleString()}]</div>
+          <div style={{ color: '#00F3FF', textShadow: '0 0 5px rgba(0, 243, 255, 0.3)' }}>[BUNKER LVL {profile.bunkerLevel}]</div>
         </div>
       </div>
 
-      {profile && (
-        <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-          <div style={{ border: '1px solid #333', padding: 20, background: '#111' }}>
-            <h3 style={{ color: '#888' }}>OPERATOR</h3>
-            <div style={{ fontSize: '1.5rem' }}>{profile.username}</div>
-          </div>
-          <div style={{ border: '1px solid #333', padding: 20, background: '#111' }}>
-            <h3 style={{ color: '#888' }}>CREDITS</h3>
-            <div style={{ fontSize: '1.5rem', color: '#FFD700' }}>{profile.credits}</div>
-          </div>
-          <div style={{ border: '1px solid #333', padding: 20, background: '#111' }}>
-            <h3 style={{ color: '#888' }}>BUNKER LEVEL</h3>
-            <div style={{ fontSize: '1.5rem' }}>LVL {profile.bunker_level}</div>
-          </div>
-        </div>
-      )}
-      
-      {/* Pass selectedSector to MiningWidget (requires update to MiningWidget props) */}
-      {profile && <MiningWidget selectedSector={selectedSector} currentUserId={profile.id} onJobComplete={handleRefresh} />}
-      {profile && <RefiningWidget onJobComplete={handleRefresh} />}
-      {profile && <SkillsWidget />}
-      {profile && <FacilitiesWidget onUpgrade={handleRefresh} inventory={profile.inventory} />}
-      {profile && <DirectivesWidget onQuestClaimed={handleRefresh} refreshTrigger={questRefreshTrigger} />}  
-      {/* Note: profile.username is not IDs, but we need ID for owner check? actually ownerId in sector is likely UUID, username is string. 
-          We need user ID. Profile endpoint usually returns ID? 
-          Wait, `UserProfile` interface only has username.
-          I need to check `UserProfile` interface and `getProfile`.
-          If I need user ID for check, I might need it. 
-          Actually MiningWidget can check `currentUserId` if valid. 
-          Or simpler: `MiningWidget` will try to start job, backend verifies.
-      */}
-      {profile && <MarketWidget />}
+      {/* Direct Widgets */}
+      <SkillsWidget onSkillUnlock={fetchProfile} />
+      <MiningWidget selectedSector={null} currentUserId={userId} />
+      <RefiningWidget />
+      <DirectivesWidget />
+      <FacilitiesWidget onUpgrade={fetchProfile} />
+      <MarketWidget />
 
-      {/* Map Grid - Uses first found bunker as center, or 0,0 default */}
-      {profile && (
-        <MapGrid 
-          initialCenterX={profile.sectors?.find(s => s.type === 'BUNKER')?.x || '0'} 
-          initialCenterY={profile.sectors?.find(s => s.type === 'BUNKER')?.y || '0'} 
-          onSelectSector={(s) => setSelectedSector(s)}
-          selectedSectorId={selectedSector?.id}
-          currentUserId={profile.id}
-        />
-      )}
+      <button
+        onClick={() => window.location.href = '/bunker'}
+        style={{
+          marginTop: 40,
+          background: '#00FF9D',
+          border: 'none',
+          color: 'black',
+          padding: '15px 30px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          fontSize: '1rem',
+        }}
+      >
+        🌐 ENTER BUNKER (3D MODE)
+      </button>
 
-      {/* Sector Detail Panel with Claim functionality */}
-      {profile && (
-        <SectorDetailPanel 
-          sector={selectedSector}
-          currentUserId={profile.id}
-          onClaimed={handleRefresh}
-        />
-      )}
-
-
-      {profile && profile.inventory && profile.inventory.length > 0 ? (
-        <div style={{ marginTop: 40, border: '1px solid #333', padding: 20, background: '#111' }}>
-          <h3 style={{ color: '#888' }}>INVENTORY</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 20 }}>
-            {profile.inventory.map((slot, idx) => (
-              <div key={idx} style={{ background: '#222', padding: 15, border: '1px solid #444', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ color: '#00FF9D', fontWeight: 'bold' }}>{slot.item}</div>
-                  <div style={{ color: '#888' }}>x{slot.quantity}</div>
-                </div>
-                <button 
-                  onClick={() => openSellModal(slot.item, slot.quantity)}
-                  style={{ background: '#FFD700', color: 'black', border: 'none', padding: '5px 10px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  SELL
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div style={{ marginTop: 40, padding: 20, color: '#666', border: '1px dashed #333' }}>
-             NO RESOURCES IN STORAGE
-        </div>
-      )}
-
-      {isSellModalOpen && selectedItem && (
-        <SellModal 
-          itemId={selectedItem.id} 
-          currentQuantity={selectedItem.qty} 
-          onClose={() => setIsSellModalOpen(false)} 
-          onSuccess={handleRefresh} 
-        />
-      )}
+      <button
+        onClick={handleLogout}
+        style={{
+          marginTop: 40,
+          background: 'transparent',
+          border: '1px solid #666',
+          color: '#666',
+          padding: '10px 20px',
+          cursor: 'pointer',
+        }}
+      >
+        LOGOUT
+      </button>
     </div>
-  )
+  );
+}
+
+// Helper component for terminal access buttons
+function TerminalButton({
+  title,
+  subtitle,
+  color,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  color: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: '#161616',
+        border: `1px solid ${color}50`,
+        padding: 25,
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'all 0.2s',
+        fontFamily: "var(--gd-font-primary, 'VT323', monospace)",
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = color + '15';
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.boxShadow = `0 0 15px ${color}30, inset 0 0 30px ${color}08`;
+        e.currentTarget.style.transform = 'translateY(-2px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = '#161616';
+        e.currentTarget.style.borderColor = color + '50';
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      <div style={{
+        color,
+        fontSize: '1.2rem',
+        marginBottom: 8,
+        letterSpacing: '0.15em',
+        textShadow: `0 0 5px ${color}40`,
+      }}>
+        [ {title} ]
+      </div>
+      <div style={{ color: '#555', fontSize: '0.95rem' }}>
+        {subtitle}
+      </div>
+    </button>
+  );
 }
