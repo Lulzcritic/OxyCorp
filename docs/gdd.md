@@ -90,3 +90,4 @@ The player's private bunker serves as their base of operations and respawn point
 - **Client (UI / Menus):** React for rendering deep, stateful diegetic terminal menus, HUD overlays, and the OS environment.
 - **Backend & Database:** Supabase for authentication, real-time database updates, relational data storage, and serverless functions.
 - **Networking:** WebSockets for handling real-time presence, state synchronization, spatial awareness, and combat within the instanced Wild Plots and Social Hubs.
+   
