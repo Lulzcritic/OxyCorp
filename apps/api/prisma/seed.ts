@@ -1,9 +1,26 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // Seed Test User
+  const passwordHash = await bcrypt.hash('password123', 10);
+  const testUser = await prisma.user.upsert({
+    where: { email: 'test@oxycorp.com' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000000',
+      username: 'TestPlayer',
+      email: 'test@oxycorp.com',
+      passwordHash,
+      credits: 5000,
+      bunker_level: 1,
+      specialization: 'FORGE',
+    },
+  });
+  console.log(`✓ Test user seeded: ${testUser.email} / password123`);
   // Seed DroneVariants
   const drones = [
     {
