@@ -19,14 +19,14 @@ Based on analysis of the Moloch codebase, here are the key findings about the ex
 - **Current Tech Stack:**
   - Frontend: React 18+ with Zustand for state management
   - Backend: NestJS 10.3+ (Modular Monolith)
-  - Database: PostgreSQL 15+ via Supabase with Prisma ORM
+  - Database: PostgreSQL 15+ with Prisma ORM
   - Realtime: Socket.io 4.7+ for WebSocket connections
   - Build System: Turborepo monorepo
 - **Architecture Style:** Modular Monolith with clear module boundaries (User, Economy, Combat, Map)
 - **Deployment Method:**
   - Frontend: Static hosting (Vercel)
   - Backend: Self-hosted Node.js instances
-  - Database: Managed Supabase
+  - Database: Managed PostgreSQL
 
 #### Available Documentation
 
@@ -52,7 +52,7 @@ Based on analysis of the Moloch codebase, here are the key findings about the ex
 
 Based on my analysis of your project, I've identified the following about your existing system:
 
-✅ **Stack**: React + NestJS + Supabase with Socket.io for realtime  
+✅ **Stack**: React + NestJS + PostgreSQL with Socket.io for realtime  
 ✅ **Architecture**: Modular monolith backend, pure React frontend (no 3D currently)  
 ✅ **Components**: 16 existing UI components all accessible from Dashboard  
 ✅ **Constraints**: Strict performance requirements (<1s load, mobile support)  

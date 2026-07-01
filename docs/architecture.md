@@ -12,7 +12,7 @@ This document outlines the overall project architecture for **Moloch**, a Techno
 
 ### Technical Summary
 
-Moloch utilizes a **Modular Monolith** architecture to balance development speed with future scalability. The system is built on a **Node.js/TypeScript** backend exposing both RESTful endpoints and real-time **WebSockets** (via Socket.io) to a **React** frontend. Data persistence is handled by **Supabase (PostgreSQL)**, leveraging its strong relational capabilities and built-in Authentication/Row Level Security(RLS).
+Moloch utilizes a **Modular Monolith** architecture to balance development speed with future scalability. The system is built on a **Node.js/TypeScript** backend exposing both RESTful endpoints and real-time **WebSockets** (via Socket.io) to a **React** frontend. Data persistence is handled by **PostgreSQL**, leveraging its strong relational capabilities.
 
 ### High Level Project Diagram
 
@@ -21,9 +21,9 @@ graph TD
     User[Browser Client]
     LB[Load Balancer / Ingress]
     API[Game Server - Node.js/NestJS]
-    DB[(Supabase PostgreSQL)]
+    DB[(PostgreSQL)]
     Redis[(Redis Cache/PubSub)]
-    Auth[Supabase Auth]
+    Auth[Custom Auth]
 
     User -->|HTTPS/REST| LB
     User -->|WSS/Socket.io| LB
@@ -41,7 +41,7 @@ graph TD
 - **Event-Driven Architecture (Internal):** Use an internal Event Bus for system decoupling (e.g., `HarvestCompleted` event triggers `InventoryUpdate`).
   - _Rationale:_ Critical for the "Asynchronous" nature of the game; allows the "Auto-Battler" results to process independently of user session.
 - **Repository Pattern:** Abstract database access behind typed repositories.
-  - _Rationale:_ Decouples game logic from Supabase/Prisma specifics, allowing easier testing and schema evolution.
+  - _Rationale:_ Decouples game logic from PostgreSQL/Prisma specifics, allowing easier testing and schema evolution.
 - **Optimistic UI Updates:** Frontend assumes success for high-frequency actions (like market bids) while the backend validates asynchronously.
   - _Rationale:_ Essential to make the browser game feel "responsive" and not sluggish like a typical web app.
 
@@ -49,9 +49,9 @@ graph TD
 
 ### Cloud Infrastructure
 
-- **Provider:** Mixed (Supabase + Self-hosted).
+- **Provider:** Self-hosted.
 - **Key Services:**
-  - **Database & Auth:** Supabase (Managed PostgreSQL).
+  - **Database & Auth:** Managed PostgreSQL & Custom Auth.
   - **Game Server Compute:** Self-hosted (Persistent Node.js instances).
   - **Frontend Hosting:** Vercel.
 - **Deployment Regions:** EU-West (Ireland) - Central hub to minimize latency variance.
@@ -63,7 +63,7 @@ graph TD
 | **Language**   | TypeScript | 5.3+        | Full Stack Dev     | Single language for FE/BE, strong typing for complex economy logic.               |
 | **Runtime**    | Node.js    | 20.11 (LTS) | Backend Runtime    | Stable, performant async I/O perfect for game loops.                              |
 | **Framework**  | NestJS     | 10.3+       | Backend Framework  | Enforces "Modular Monolith" structure. Built-in WebSocket support.                |
-| **Database**   | PostgreSQL | 15+         | Primary Data Store | Relational integrity is non-negotiable for an economy game. (Via Supabase).       |
+| **Database**   | PostgreSQL | 15+         | Primary Data Store | Relational integrity is non-negotiable for an economy game.       |
 | **ORM**        | Prisma     | 5.9+        | Data Access        | Type-safe database queries. Reduces class of errors related to schema mismatches. |
 | **Realtime**   | Socket.io  | 4.7+        | Game State Sync    | Robust event-based communication for battle updates/market ticks.                 |
 | **State Mgmt** | Zustand    | 4.5+        | Frontend State     | Simpler than Redux, perfect for rapid game state mutations.                       |
@@ -75,7 +75,7 @@ graph TD
 
 **Purpose:** Represents the player and their persistent base on Mars.
 
-- `id`: UUID (matches Supabase Auth ID)
+- `id`: UUID
 - `username`: String (Unique)
 - `credits`: BigInt (Primary currency)
 - `specialization`: Enum (COGITATOR | FORGE | MERCHANT)
@@ -281,13 +281,12 @@ flowchart LR
 
 ### Authentication & Authorization
 
-- **Auth Method:** Supabase Auth (JWT)
+- **Auth Method:** Custom JWT Auth
 - **Pattern:** Client sends JWT in Header. NestJS Guard verifies signature + User ID.
-- **RLS:** Row Level Security enabled on Postgres.
 
 ### Secrets Management
 
-- **Production:** Environment Variables (Self-hosted) / Supabase Vault
+- **Production:** Environment Variables (Self-hosted) / Vault
 - **Code Requirements:** NO .ENV files in repo.
 
 ## 8. Algorithmic Strategies
