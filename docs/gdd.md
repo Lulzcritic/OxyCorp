@@ -4,7 +4,7 @@
 - **Project Name:** Tarsis
 - **Genre:** Techno-Gothic Browser MMORPG
 - **Target Platform:** Web Browser
-- **Engine Setup:** Three.js (3D View), React (UI/Menus), Supabase (Database/Auth)
+- **Engine Setup:** Three.js (3D View), React (UI/Menus), PostgreSQL (Database)
 - **Setting:** Post-Earth Grimdark Mars (The "Red Tomb")
 - **Core Pillars:** 
   - Harvesting (Isolation & Risk)
@@ -88,6 +88,6 @@ The player's private bunker serves as their base of operations and respawn point
 ### 8.1 Stack Overview
 - **Client (3D Environment):** Three.js for handling the 3rd-person 3D world rendering and character controllers.
 - **Client (UI / Menus):** React for rendering deep, stateful diegetic terminal menus, HUD overlays, and the OS environment.
-- **Backend & Database:** Supabase for authentication, real-time database updates, relational data storage, and serverless functions.
+- **Backend & Database:** PostgreSQL for relational data storage. Custom Auth for authentication.
 - **Networking:** WebSockets for handling real-time presence, state synchronization, spatial awareness, and combat within the instanced Wild Plots and Social Hubs.
    

@@ -19,7 +19,7 @@
 #### Epic 1: Project Genesis
 
 - [x] **[1.1 Project Skeleton](./stories/story-1.1.md)**: Repo setup, CI/CD.
-- [x] **[1.2 Supabase Auth](./stories/story-1.2.md)**: Login/Signup.
+- [x] **[1.2 Authentication](./stories/story-1.2.md)**: Login/Signup.
 - [x] **[1.3 User Profile](./stories/story-1.3.md)**: Bunker creation.
 
 #### Epic 2: The Harvest Loop

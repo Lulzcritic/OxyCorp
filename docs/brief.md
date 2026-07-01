@@ -98,7 +98,7 @@ A playable loop where a player can Harvest -> Sell -> Buy Upgrade -> Harvest Fas
 - **Tech Stack:**
     - **Frontend:** React + Tailwind (UI), Three.js (Future 3D).
     - **Backend:** Node.js/TypeScript (Game Logic).
-    - **Database:** Supabase/PostgreSQL (Relational data for economy is critical).
+    - **Database:** PostgreSQL (Relational data for economy is critical).
     - **Realtime:** WebSockets (Socket.io) for market/chat.
 
 ### Constraints & Assumptions
@@ -119,7 +119,7 @@ A playable loop where a player can Harvest -> Sell -> Buy Upgrade -> Harvest Fas
 ## 10. Next Steps
 
 ### Immediate Actions
-1.  **Architecture Design:** Define the Database Schema (Supabase) for User/Inventory/Market.
+1.  **Architecture Design:** Define the Database Schema (PostgreSQL) for User/Inventory/Market.
 2.  **UI Wireframing:** Design the "Dashboard" and market interface.
 3.  **Prototype:** Build the "Harvest Loop" (Click button -> Timer -> Get Item).
 

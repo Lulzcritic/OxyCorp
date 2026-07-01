@@ -22,7 +22,7 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 
 ### Functional
 
-- **FR1:** Users must be able to authenticate via OAuth (Supabase) and persistent sessions.
+- **FR1:** Users must be able to authenticate via OAuth and persistent sessions.
 - **FR2:** Users must be able to harvest resources (Iron, Copper, Silica) using time-based "Mining Drills."
 - **FR3:** Users must be able to list items for sale and buy items on a global, player-driven market.
 - **FR4:** Users must be able to configure "Drone Swarms" with simple logic (formation, target priority) and deploy them to claim territory.
@@ -71,7 +71,7 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 ### Additional Assumptions
 
 - **3D Deferred:** MVP will use 2D/UI only. Three.js scenes are Phase 2.
-- **Self-Hosted Game Server:** While DB is managed (Supabase), the game logic runs on persistent Node.js instances (Railway/VPS) to handle WebSockets.
+- **Self-Hosted Game Server:** While DB is managed, the game logic runs on persistent Node.js instances (Railway/VPS) to handle WebSockets.
 
 ## 5. Epic List
 
@@ -103,12 +103,12 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 2.  GitHub Actions pipeline builds and tests both apps on push.
 3.  Deploy script pushes to Railway/Vercel successfully (Staging Environment).
 
-#### Story 1.2: Supabase Auth Integration
+#### Story 1.2: Authentication Integration
 
 **As a** Player, **I want** to sign up using Email/Password or Discord, **so that** I can secure my account.
 **Acceptance Criteria:**
 
-1.  Frontend Login page implements Supabase Auth UI.
+1.  Frontend Login page implements Authentication UI.
 2.  Backend guards (NestJS) verify the JWT token on protected endpoints.
 3.  User is redirected to `/dashboard` upon successful login.
 
@@ -117,7 +117,7 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 **As a** Player, **I want** my "Bunker" to be created automatically when I sign up, **so that** I have a home base.
 **Acceptance Criteria:**
 
-1.  On User creation trigger (Supabase Hook or API call), create a `User` and `Inventory` record in Postgres.
+1.  On User creation trigger (Hook or API call), create a `User` and `Inventory` record in Postgres.
 2.  Grant the user 1000 starter Credits.
 3.  Dashboard displays Username, Credits, and Bunker Level.
 
@@ -209,7 +209,7 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 
 1.  NestJS Gateway handles `chat:join` and `chat:message` events.
 2.  Server broadcasts messages to all connected users in the "global" room.
-3.  Connection auth via JWT (same Supabase token used for API).
+3.  Connection auth via JWT.
 
 #### Story 5.2: Chat UI Component
 
@@ -389,7 +389,7 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 
 - [x] **Clear Goals:** Launch Alpha, Validate Niche.
 - [x] **User Value:** "Time Respect" + "Deep Economy" defined.
-- [x] **Feasibility:** Tech assumptions (NestJS/Supabase/2D) align with MVP timeline.
+- [x] **Feasibility:** Tech assumptions (NestJS/PostgreSQL/2D) align with MVP timeline.
 - [x] **Scope:** Limited to 5 focused Epics. No "Nice to Haves" masquerading as core.
 - [x] **Success Metrics:** Retention and Session Frequency defined.
 
@@ -409,4 +409,4 @@ Proceed with providing the technical blueprint for the **Modular Monolith** in N
 
 1.  **WebSocket Architecture:** How to scale sockets if we hit 10k users? (Redis Adapter).
 2.  **Market Escrow:** Define the exact transaction flow to prevent race conditions.
-3.  **Authentication:** finalizing the Supabase <-> NestJS guard/strategy.
+3.  **Authentication:** finalizing the JWT <-> NestJS guard/strategy.

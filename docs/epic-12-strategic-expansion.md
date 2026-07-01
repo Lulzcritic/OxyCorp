@@ -19,7 +19,7 @@ Enable meaningful progression by defining SP earning actions, implementing skill
 
 - NestJS modular monolith (API)
 - React (Web frontend)
-- Prisma ORM + PostgreSQL (Supabase)
+- Prisma ORM + PostgreSQL
 - EventEmitter2 for domain events
 
 **Integration Points:**
