@@ -9,6 +9,7 @@ import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics, RigidBody, MeshCollider } from '@react-three/rapier';
 import { Environment, useGLTF } from '@react-three/drei';
+import { useNavigate } from 'react-router-dom';
 import PlayerController from './PlayerController';
 import TerminalObject from './TerminalObject';
 import { TerminalType } from '../../types/terminal';
@@ -65,6 +66,25 @@ function Terminals() {
           rotation={[0, -1.5, 0]}
         />
     </>
+  );
+}
+
+function ExitTrigger() {
+  const navigate = useNavigate();
+  return (
+    <mesh
+      position={[-6.23, 2, -37.0]}
+      visible={false}
+      userData={{
+        isTerminal: true,
+        terminalType: 'EXIT_BUNKER',
+        label: 'EXIT TO SURFACE',
+        onInteract: () => navigate('/hq'),
+      }}
+    >
+      <boxGeometry args={[4, 4, 2]} />
+      <meshBasicMaterial color="blue" wireframe />
+    </mesh>
   );
 }
 
@@ -125,8 +145,9 @@ export default function BunkerScene() {
             {/* Player */}
             <PlayerController />
 
-            {/* Terminals */}
+            {/* Terminals & Triggers */}
             <Terminals />
+            <ExitTrigger />
 
             {/* HDR Environment for better lighting */}
             <Environment preset="night" />

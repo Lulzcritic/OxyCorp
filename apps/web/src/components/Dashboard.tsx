@@ -86,7 +86,7 @@ export default function Dashboard() {
             <div style={{ color: '#555', fontSize: '1rem' }}>OPERATOR: <span style={{ color: '#888' }}>{profile.username}</span></div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#FFA500', fontSize: '1.3rem', textShadow: '0 0 5px rgba(255, 165, 0, 0.3)' }}>[CREDITS: ₡{profile.credits.toLocaleString()}]</div>
+            <div style={{ color: '#FFA500', fontSize: '1.3rem', textShadow: '0 0 5px rgba(255, 165, 0, 0.3)' }}>[CREDITS: ₡{Number(profile.credits).toLocaleString('en-US')}]</div>
             <div style={{ color: '#00F3FF', textShadow: '0 0 5px rgba(0, 243, 255, 0.3)' }}>[BUNKER LVL {profile.bunkerLevel}]</div>
           </div>
         </div>
@@ -131,6 +131,24 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* Enter Bunker */}
+        <button
+          onClick={() => window.location.href = '/bunker'}
+          style={{
+            marginTop: 40,
+            marginRight: 20,
+            background: '#00FF9D',
+            border: 'none',
+            color: 'black',
+            padding: '15px 30px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '1rem',
+          }}
+        >
+          🌐 ENTER BUNKER (3D MODE)
+        </button>
+
         {/* Logout */}
         <button
           onClick={handleLogout}
@@ -162,7 +180,7 @@ export default function Dashboard() {
           <div style={{ color: '#555', fontSize: '1rem' }}>OPERATOR: <span style={{ color: '#888' }}>{profile.username}</span></div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ color: '#FFA500', fontSize: '1.3rem', textShadow: '0 0 5px rgba(255, 165, 0, 0.3)' }}>[CREDITS: ₡{profile.credits.toLocaleString()}]</div>
+          <div style={{ color: '#FFA500', fontSize: '1.3rem', textShadow: '0 0 5px rgba(255, 165, 0, 0.3)' }}>[CREDITS: ₡{Number(profile.credits).toLocaleString('en-US')}]</div>
           <div style={{ color: '#00F3FF', textShadow: '0 0 5px rgba(0, 243, 255, 0.3)' }}>[BUNKER LVL {profile.bunkerLevel}]</div>
         </div>
       </div>

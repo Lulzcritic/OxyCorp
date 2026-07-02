@@ -141,7 +141,7 @@ export default function HeadquartersScene() {
             <RefineryBuilding />
 
             {/* Player */}
-            <PlayerController />
+            <PlayerController spawnPosition={[-6.06, 1, -1]} />
 
             {/* Environment map for realistic PBR reflections */}
             <Environment preset="sunset" background={false} />

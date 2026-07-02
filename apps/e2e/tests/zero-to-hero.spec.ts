@@ -33,19 +33,44 @@ test.describe('Zero to Hero Economic Loop', () => {
       // Open Operations Command terminal
       await page.click('text=[ OPERATIONS COMMAND ]');
 
+      // Wait for terminal to load and either show EXPAND or existing resources
+      await expect(
+        page.locator('button:has-text("EXPAND TERRITORY"), div[title*="RESOURCE"]').first()
+      ).toBeVisible({ timeout: 15000 });
+
+      // Generate territory if needed
+      const expandBtn = page.locator('button:has-text("EXPAND TERRITORY")');
+      if (await expandBtn.isVisible()) {
+        // Handle alert and wait for API to finish
+        page.on('dialog', dialog => dialog.accept());
+        const resPromise = page.waitForResponse(res => res.url().includes('/map/generate-territory'));
+        await expandBtn.click();
+        await resPromise;
+      }
+
       // Click the first available RESOURCE sector on the map
       // (Sector title contains 'RESOURCE' in MapGrid)
       await page.locator('div[title*="RESOURCE"]').first().click();
+
+      // Claim the sector
+      await page.click('button:has-text("CLAIM SECTOR [500 CR]")');
+      
+      // Claiming unselects the sector, so re-click it after map refreshes
+      await page.waitForResponse(res => res.url().includes('/map/sectors'));
+      await page.locator('div[title*="RESOURCE"]').first().click();
+
+      // Wait for it to become owned (button disappears or text changes)
+      await expect(page.locator('text=> STATUS: OWNED')).toBeVisible({ timeout: 10000 });
       
       // Initiate extraction
       await page.click('button:has-text("INITIATE EXTRACTION")');
 
-      // Wait for the job to complete and claim
+      // Wait for extraction to complete
       await expect(page.locator('button:has-text("COLLECT RESOURCES")')).toBeVisible({ timeout: 30000 });
-      await page.click('button:has-text("COLLECT RESOURCES")');
       
       // Accept the success alert
-      page.on('dialog', dialog => dialog.accept());
+      page.once('dialog', dialog => dialog.accept());
+      await page.click('button:has-text("COLLECT RESOURCES")');
     });
 
     // 3. Refining (Forge)

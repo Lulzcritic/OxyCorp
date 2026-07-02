@@ -63,7 +63,7 @@ export default function PlotScene({ seed, isOwned }: PlotSceneProps) {
             <PlotTerrain seed={seed} size={200} resolution={100} isOwned={isOwned} />
 
             {/* Player Character */}
-            <PlayerController />
+            <PlayerController spawnPosition={[0, 1, 0]} />
 
             {/* PBR Reflections */}
             <Environment preset="sunset" background={false} />

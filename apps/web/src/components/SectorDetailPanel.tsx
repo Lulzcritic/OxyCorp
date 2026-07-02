@@ -29,7 +29,7 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   }, [])
 
   const fetchSectorInfo = async () => {
-    if (!session) return
+
 
     const res = await apiFetch('/map/my-sectors', {
     })
@@ -43,7 +43,7 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   const claimSector = async () => {
     if (!sector) return
 
-    if (!session) return
+
 
     setClaiming(true)
     try {
@@ -72,7 +72,7 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   const installOutpost = async () => {
     if (!sector) return
 
-    if (!session) return
+
 
     if (!confirm('Install Outpost?\nCost: 1000 Credits, 50 Steel Plating, 100 Iron Ore\nEffect: +25% Mining Yield')) {
       return;
@@ -101,7 +101,7 @@ export default function SectorDetailPanel({ sector, currentUserId, onClaimed }: 
   }
 
   const generateTerritory = async () => {
-    if (!session) return
+
 
     setClaiming(true)
     try {
