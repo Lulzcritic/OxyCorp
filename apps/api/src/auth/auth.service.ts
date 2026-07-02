@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { MapSpawningService } from '../map/map.spawning.service';
 import * as bcrypt from 'bcrypt';
 
 export interface TokenPair {
@@ -27,6 +28,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private mapSpawningService: MapSpawningService,
   ) {
     this.REFRESH_SECRET =
       process.env.JWT_REFRESH_SECRET || 'super-secret-refresh-key';
@@ -66,6 +68,9 @@ export class AuthService {
 
     // Hash password and create user
     const passwordHash = await bcrypt.hash(password, this.SALT_ROUNDS);
+    
+    // Find spawn location
+    const spawnLoc = await this.mapSpawningService.findSpawnLocation();
 
     const user = await this.prisma.user.create({
       data: {
@@ -73,6 +78,22 @@ export class AuthService {
         email,
         passwordHash,
         credits: 1000n,
+        inventory: { create: [] },
+        sectors: {
+          create: [
+            {
+              x: spawnLoc.primary.x,
+              y: spawnLoc.primary.y,
+              type: 'BUNKER',
+            },
+            {
+              x: spawnLoc.secondary.x,
+              y: spawnLoc.secondary.y,
+              type: 'RESOURCE',
+              resources: this.mapSpawningService.generateResourceNode(),
+            },
+          ],
+        },
       },
     });
 
@@ -204,6 +225,9 @@ export class AuthService {
         if (existing) {
           username = `${profile.username}_${profile.id.slice(-4)}`;
         }
+        
+        // Find spawn location
+        const spawnLoc = await this.mapSpawningService.findSpawnLocation();
 
         user = await this.prisma.user.create({
           data: {
@@ -211,6 +235,22 @@ export class AuthService {
             email: profile.email || null,
             discordId: profile.id,
             credits: 1000n,
+            inventory: { create: [] },
+            sectors: {
+              create: [
+                {
+                  x: spawnLoc.primary.x,
+                  y: spawnLoc.primary.y,
+                  type: 'BUNKER',
+                },
+                {
+                  x: spawnLoc.secondary.x,
+                  y: spawnLoc.secondary.y,
+                  type: 'RESOURCE',
+                  resources: this.mapSpawningService.generateResourceNode(),
+                },
+              ],
+            },
           },
         });
       }

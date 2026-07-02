@@ -19,7 +19,6 @@ import { TerminalType } from '../../types/terminal';
 import PlayerModel from './PlayerModel';
 
 const MOVE_SPEED = 5;
-const SPAWN_POSITION: [number, number, number] = [-6.23, 3, -39.39];
 const INTERACTION_DISTANCE = 4;
 const CAMERA_COLLISION_OFFSET = 0.3; // How far in front of wall the camera sits
 
@@ -31,25 +30,32 @@ function playBeep(frequency: number, duration: number) {
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
+    
     osc.frequency.value = frequency;
-    osc.type = 'square';
-    gain.gain.value = 0.1;
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.start();
+    osc.type = 'sine';
+    
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    
+    osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
-  } catch {
-    // Audio not available
+  } catch (e) {
+    // Ignore audio errors
   }
 }
 
-export default function PlayerController() {
+interface PlayerControllerProps {
+  spawnPosition?: [number, number, number];
+}
+
+export default function PlayerController({ spawnPosition = [-6.23, 3, -39.39] }: PlayerControllerProps = {}) {
   const rigidBodyRef = useRef<any>(null);
   const controlsRef = useRef<any>(null);
   const playerModelRef = useRef<THREE.Group>(null);
   const { scene, camera } = useThree();
   const isMovingRef = useRef(false);
   const cameraRaycaster = useRef(new Raycaster());
-  const lastPlayerPos = useRef(new Vector3(SPAWN_POSITION[0], SPAWN_POSITION[1], SPAWN_POSITION[2]));
+  const lastPlayerPos = useRef(new Vector3(spawnPosition[0], spawnPosition[1], spawnPosition[2]));
 
   const movementLocked = useInteractionStore((s) => s.movementLocked);
   const setMovementLocked = useInteractionStore((s) => s.setMovementLocked);
@@ -343,7 +349,7 @@ export default function PlayerController() {
       {/* Physics body — dynamic so it collides with bunker walls */}
       <RigidBody
         ref={rigidBodyRef}
-        position={SPAWN_POSITION}
+        position={spawnPosition}
         enabledRotations={[false, false, false]}
         type="dynamic"
         mass={1}

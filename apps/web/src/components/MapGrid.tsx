@@ -18,12 +18,13 @@ interface MapGridProps {
   onSelectSector?: (sector: Sector) => void;
   selectedSectorId?: string | null;
   currentUserId?: string;
+  refreshTrigger?: number;
 }
 
 const CELL_SIZE = 50;
 const RADIUS = 5;
 
-export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector, selectedSectorId, currentUserId }: MapGridProps) {
+export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector, selectedSectorId, currentUserId, refreshTrigger }: MapGridProps) {
   const [centerX, setCenterX] = useState(BigInt(initialCenterX));
   const [centerY, setCenterY] = useState(BigInt(initialCenterY));
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -53,7 +54,7 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
 
   useEffect(() => {
     fetchSectors();
-  }, [fetchSectors]);
+  }, [fetchSectors, refreshTrigger]);
 
   const gridCells = [];
   const range = Array.from({ length: RADIUS * 2 + 1 }, (_, i) => i - RADIUS);

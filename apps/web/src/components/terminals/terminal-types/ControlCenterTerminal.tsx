@@ -27,6 +27,7 @@ interface Sector {
 export default function ControlCenterTerminal() {
   const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
   const [userId, setUserId] = useState<string>('');
+  const [mapRefreshTrigger, setMapRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const user = useAuthStore.getState().user;
@@ -55,17 +56,17 @@ export default function ControlCenterTerminal() {
             onSelectSector={setSelectedSector}
             selectedSectorId={selectedSector?.id}
             currentUserId={userId}
+            refreshTrigger={mapRefreshTrigger}
           />
-          {selectedSector && (
-            <SectorDetailPanel
-              sector={selectedSector}
-              currentUserId={userId}
-              onClaimed={() => {
-                // Refresh sector data when claimed
-                setSelectedSector(null);
-              }}
-            />
-          )}
+          <SectorDetailPanel
+            sector={selectedSector}
+            currentUserId={userId}
+            onClaimed={() => {
+              // Refresh sector data when claimed
+              setSelectedSector(null);
+              setMapRefreshTrigger(prev => prev + 1);
+            }}
+          />
         </div>
       </div>
     </TerminalContainer>
