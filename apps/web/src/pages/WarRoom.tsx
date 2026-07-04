@@ -28,7 +28,7 @@ export default function WarRoom() {
   }, []);
 
   const fetchData = async () => {
-    if (!session) return;
+
 
     // Fetch Inventory (Profile)
     const resProfile = await apiFetch('/user/profile', {
@@ -86,7 +86,7 @@ export default function WarRoom() {
   const handleSave = async () => {
     setLoading(true);
     setMessage('');
-    if (!session) return;
+
 
     const res = await apiFetch('/swarms/save', {
         method: 'POST',

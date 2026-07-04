@@ -5,6 +5,18 @@ interface EquipmentWidgetProps {
   equipment: Record<string, string>;
   inventory: Array<{ id: string; item: string; quantity: string }>;
   onRefresh: () => void;
+  modifiers?: {
+    xpMultiplier: number;
+    miningMultiplier: number;
+    attackMultiplier: number;
+    defenseMultiplier: number;
+  };
+  activeSets?: Array<{
+    name: string;
+    count: number;
+    maxCount: number;
+    activeBonuses: string[];
+  }>;
 }
 
 const EQUIPMENT_SLOTS = [
@@ -14,7 +26,13 @@ const EQUIPMENT_SLOTS = [
   { id: 'tool', label: 'EXTRACTION TOOL' },
 ];
 
-export default function EquipmentWidget({ equipment, inventory, onRefresh }: EquipmentWidgetProps) {
+export default function EquipmentWidget({
+  equipment,
+  inventory,
+  onRefresh,
+  modifiers,
+  activeSets,
+}: EquipmentWidgetProps) {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +40,6 @@ export default function EquipmentWidget({ equipment, inventory, onRefresh }: Equ
     if (!selectedSlot || loading) return;
     setLoading(true);
     try {
-      if (!session) return;
-
       const res = await apiFetch('/user/equipment/equip', {
         method: 'POST',
         headers: {
@@ -49,8 +65,6 @@ export default function EquipmentWidget({ equipment, inventory, onRefresh }: Equ
     if (loading) return;
     setLoading(true);
     try {
-      if (!session) return;
-
       const res = await apiFetch('/user/equipment/unequip', {
         method: 'POST',
         headers: {
@@ -71,8 +85,11 @@ export default function EquipmentWidget({ equipment, inventory, onRefresh }: Equ
     }
   };
 
+  const NON_EQUIPABLE = ['IRON', 'COPPER', 'SILICA', 'SLUDGE', 'IRON_ORE', 'STEEL_PLATING', 'CRUDE_FUEL'];
+  const equipableItems = inventory.filter(i => !NON_EQUIPABLE.includes(i.item) && !i.item.startsWith('DRONE_'));
+
   return (
-    <div style={{ display: 'flex', gap: '20px' }}>
+    <div style={{ display: 'flex', gap: '20px', fontFamily: "var(--gd-font-primary, monospace)" }}>
       {/* Slots Panel */}
       <div style={{ flex: 1, padding: '20px', background: '#0A0A0A', border: '1px solid #00FF9D' }}>
         <h3 style={{ color: '#00F3FF', marginBottom: '15px' }}>CURRENT LOADOUT</h3>
@@ -129,11 +146,11 @@ export default function EquipmentWidget({ equipment, inventory, onRefresh }: Equ
       {selectedSlot && (
         <div style={{ flex: 1, padding: '20px', background: '#0A0A0A', border: '1px solid #FFD700' }}>
           <h3 style={{ color: '#FFD700', marginBottom: '15px' }}>SELECT ITEM ({selectedSlot.toUpperCase()})</h3>
-          {inventory.length === 0 ? (
-            <div style={{ color: '#888' }}>NO ITEMS IN STORAGE</div>
+          {equipableItems.length === 0 ? (
+            <div style={{ color: '#888' }}>NO VALID EQUIPMENT IN STORAGE</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {inventory.map((item) => (
+              {equipableItems.map((item) => (
                 <div 
                   key={item.id}
                   onClick={() => handleEquip(item.item)}
@@ -151,6 +168,61 @@ export default function EquipmentWidget({ equipment, inventory, onRefresh }: Equ
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Stats and Set Bonuses Panel (Visible when no slot is selected) */}
+      {!selectedSlot && (
+        <div style={{ flex: 1, padding: '20px', background: '#0A0A0A', border: '1px solid #00F3FF' }}>
+          <h3 style={{ color: '#00F3FF', marginBottom: '15px' }}>GEAR ATTRIBUTES</h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1A1A1A', paddingBottom: '4px' }}>
+              <span style={{ color: '#888' }}>XP GAIN MODIFIER</span>
+              <span style={{ color: (modifiers?.xpMultiplier || 1.0) > 1.0 ? '#00FF9D' : '#FFF', fontWeight: 'bold' }}>
+                +{Math.round(((modifiers?.xpMultiplier || 1.0) - 1.0) * 100)}%
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1A1A1A', paddingBottom: '4px' }}>
+              <span style={{ color: '#888' }}>MINING YIELD</span>
+              <span style={{ color: (modifiers?.miningMultiplier || 1.0) > 1.0 ? '#00FF9D' : '#FFF', fontWeight: 'bold' }}>
+                +{Math.round(((modifiers?.miningMultiplier || 1.0) - 1.0) * 100)}%
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1A1A1A', paddingBottom: '4px' }}>
+              <span style={{ color: '#888' }}>SWARM ATTACK</span>
+              <span style={{ color: (modifiers?.attackMultiplier || 1.0) > 1.0 ? '#00FF9D' : '#FFF', fontWeight: 'bold' }}>
+                +{Math.round(((modifiers?.attackMultiplier || 1.0) - 1.0) * 100)}%
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1A1A1A', paddingBottom: '4px' }}>
+              <span style={{ color: '#888' }}>SWARM DEFENSE</span>
+              <span style={{ color: (modifiers?.defenseMultiplier || 1.0) > 1.0 ? '#00FF9D' : '#FFF', fontWeight: 'bold' }}>
+                +{Math.round(((modifiers?.defenseMultiplier || 1.0) - 1.0) * 100)}%
+              </span>
+            </div>
+          </div>
+
+          <h3 style={{ color: '#FFA500', marginBottom: '15px' }}>ACTIVE SETS</h3>
+          {activeSets && activeSets.length > 0 ? (
+            activeSets.map(set => (
+              <div key={set.name} style={{ background: '#0D0D0D', border: '1px solid #FFA500', padding: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ color: '#FFA500', fontWeight: 'bold' }}>{set.name.toUpperCase()}</span>
+                  <span style={{ color: '#888' }}>({set.count} / {set.maxCount})</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {set.activeBonuses.map((bonus, i) => (
+                    <div key={i} style={{ color: '#00FF9D', fontSize: '0.85rem' }}>
+                      ✓ {bonus}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ color: '#555', fontStyle: 'italic' }}>NO ACTIVE SET BONUSES</div>
           )}
         </div>
       )}

@@ -153,8 +153,14 @@ export default function PlotTerrain({
       </RigidBody>
 
       {/* Renders Seeded Resource Nodes */}
-      {resourcePlacements.map((props) => (
-        <ResourceNode key={props.id} {...props} isOwned={isOwned} />
+      {resourcePlacements.map((props, idx) => (
+        <ResourceNode
+          key={props.id}
+          {...props}
+          index={idx}
+          totalNodes={resourcePlacements.length}
+          isOwned={isOwned}
+        />
       ))}
     </group>
   );

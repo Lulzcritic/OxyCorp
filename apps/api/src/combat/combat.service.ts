@@ -6,6 +6,7 @@ import {
   BattleTick,
   BattleEvent,
 } from './battle-log.interface';
+import { calculateEquipmentModifiers } from '../items/equipment-effects.util';
 
 interface DroneInstance extends BattleDroneState {
   stats: {
@@ -117,6 +118,22 @@ export class CombatService {
     if (!swarmA || !swarmB)
       throw new BadRequestException('One or more swarms not found');
 
+    // Fetch equipment modifiers for both owners
+    const userA = await this.prisma.user.findUnique({
+      where: { id: swarmA.userId },
+      select: { equipment: true }
+    });
+    const userB = await this.prisma.user.findUnique({
+      where: { id: swarmB.userId },
+      select: { equipment: true }
+    });
+
+    const eqA = (userA?.equipment as Record<string, string>) || {};
+    const eqB = (userB?.equipment as Record<string, string>) || {};
+
+    const modsA = calculateEquipmentModifiers(eqA).modifiers;
+    const modsB = calculateEquipmentModifiers(eqB).modifiers;
+
     // Initialize drone instances
     const formA = swarmA.formation as any[];
     const formB = swarmB.formation as any[];
@@ -135,8 +152,8 @@ export class CombatService {
         hp: stats.health,
         maxHp: stats.health,
         stats: {
-          attack: stats.attack,
-          defense: stats.defense,
+          attack: Math.floor(stats.attack * modsA.attackMultiplier),
+          defense: Math.floor(stats.defense * modsA.defenseMultiplier),
           speed: stats.speed,
           range: stats.range,
           health: stats.health,
@@ -157,8 +174,8 @@ export class CombatService {
         hp: stats.health,
         maxHp: stats.health,
         stats: {
-          attack: stats.attack,
-          defense: stats.defense,
+          attack: Math.floor(stats.attack * modsB.attackMultiplier),
+          defense: Math.floor(stats.defense * modsB.defenseMultiplier),
           speed: stats.speed,
           range: stats.range,
           health: stats.health,

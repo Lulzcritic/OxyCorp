@@ -6,15 +6,18 @@
  */
 
 import BunkerScene from '../components/game/BunkerScene';
+import { useNavigate } from 'react-router-dom';
 import TerminalOverlay from '../components/terminals/TerminalOverlay';
 import InteractionPrompt from '../components/game/InteractionPrompt';
 import { useTerminalStore } from '../services/TerminalManager';
+import PlayerHUD from '../components/game/PlayerHUD';
 
 export default function Bunker() {
   const isTerminalOpen = useTerminalStore((s) => s.isOpen);
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <PlayerHUD />
       {/* 3D Scene */}
       <div 
         id="game-container"

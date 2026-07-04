@@ -7,6 +7,8 @@ import {
   BadRequestException,
   UseInterceptors,
   Req,
+  Request,
+  Param,
 } from '@nestjs/common';
 import { MapService } from './map.service';
 import { MapSpawningService } from './map.spawning.service';
@@ -50,6 +52,19 @@ export class MapController {
     return sectors;
   }
 
+  @Get('sector/:id')
+  async getSector(@Req() req: any, @Param('id') id: string) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('User not authenticated');
+    }
+    const sector = await this.mapService.getSector(id);
+    if (!sector) {
+      throw new BadRequestException('Sector not found');
+    }
+    return sector;
+  }
+
   @Get('my-sectors')
   async getMySectors(@Req() req: any) {
     const userId = req.user?.userId;
@@ -83,17 +98,27 @@ export class MapController {
   }
 
   @Post('install-outpost')
-  async installOutpost(@Req() req: any, @Body() dto: { sectorId: string }) {
-    const userId = req.user?.userId;
-    if (!userId) {
-      throw new BadRequestException('User not authenticated');
+  async installOutpost(
+    @Request() req,
+    @Body('sectorId') sectorId: string,
+  ) {
+    if (!sectorId) {
+      throw new BadRequestException('sectorId is required.');
     }
-    if (!dto.sectorId) {
-      throw new BadRequestException('sectorId is required');
-    }
-    return this.mapService.installOutpost(userId, dto.sectorId);
+    return this.mapService.installOutpost(req.user?.userId, sectorId);
   }
 
+  @Post('harvest')
+  async harvestNode(
+    @Request() req,
+    @Body('sectorId') sectorId: string,
+    @Body('nodeId') nodeId: string,
+  ) {
+    if (!sectorId || !nodeId) {
+      throw new BadRequestException('sectorId and nodeId are required.');
+    }
+    return this.mapService.harvestNode(req.user?.userId, sectorId, nodeId);
+  }
 
   /* Debug/Admin Endpoints (Disabled for Prod)
   @Public()

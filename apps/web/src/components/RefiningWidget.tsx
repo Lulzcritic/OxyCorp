@@ -33,7 +33,7 @@ const RECIPES: Recipe[] = [
   {
     id: 'IRON_TO_STEEL',
     name: 'Iron Ore → Steel Plating',
-    inputItem: 'IRON_ORE',
+    inputItem: 'IRON',
     inputQty: 10,
     outputItem: 'STEEL_PLATING',
     outputQty: 1,
@@ -62,8 +62,6 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
   const [timers, setTimers] = useState<Record<string, number>>({})
 
   const fetchJobs = useCallback(async () => {
-    if (!session) return
-
     const res = await apiFetch('/refine/jobs', {
     })
 
@@ -97,8 +95,6 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
   }, [jobs])
 
   const startRefining = async () => {
-    if (!session) return
-
     setLoading(true)
     const res = await apiFetch('/refine/start', {
       method: 'POST',
@@ -118,8 +114,6 @@ export default function RefiningWidget({ onJobComplete }: RefiningWidgetProps) {
   }
 
   const claimJob = async (jobId: string) => {
-    if (!session) return
-
     const res = await apiFetch('/refine/claim', {
       method: 'POST',
       headers: {

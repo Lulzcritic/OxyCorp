@@ -22,6 +22,19 @@ interface UserProfile {
     item: string;
     quantity: string;
   }>;
+  modifiers?: {
+    xpMultiplier: number;
+    miningMultiplier: number;
+    attackMultiplier: number;
+    defenseMultiplier: number;
+  };
+  activeSets?: Array<{
+    name: string;
+    count: number;
+    maxCount: number;
+    activeBonuses: string[];
+  }>;
+  blueprints?: string[];
 }
 
 export default function BunkerManagementTerminal() {
@@ -34,7 +47,7 @@ export default function BunkerManagementTerminal() {
 
   const fetchProfile = async () => {
     try {
-      if (!session) return;
+
 
       const res = await apiFetch('/user/profile', {
       });
@@ -119,6 +132,8 @@ export default function BunkerManagementTerminal() {
           equipment={profile.equipment} 
           inventory={profile.inventory} 
           onRefresh={fetchProfile} 
+          modifiers={profile.modifiers}
+          activeSets={profile.activeSets}
         />
       )}
 

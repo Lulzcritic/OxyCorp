@@ -18,7 +18,7 @@ export default function SellModal({ itemId, currentQuantity, onClose, onSuccess 
   const [loading, setLoading] = useState(false)
 
   const handleSell = async () => {
-    if (!session) return
+
 
     setLoading(true)
     const res = await apiFetch('/market/orders', {

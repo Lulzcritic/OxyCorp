@@ -13,6 +13,7 @@ export const TerminalType = {
   WAR_ROOM: 'WAR_ROOM',
   REFINERY: 'REFINERY',
   VEHICLE_MAP: 'VEHICLE_MAP',
+  CRAFTING: 'CRAFTING',
 } as const;
 
 export type TerminalType = typeof TerminalType[keyof typeof TerminalType];

@@ -140,7 +140,12 @@ graph TD
 - `y`: BigInt
 - `type`: Enum (EMPTY, BUNKER, RESOURCE, POI)
 - `occupier_id`: UUID (FK to User, Nullable) - For claimed plots
-- `resources`: JSON (e.g., `{ "iron": 0.8, "copper": 0.1 }`)
+- `resources`: JSON (e.g., `{ "type": "IRON", "richness": 0.8, "quantity": 748, "capacity": 800, "harvested": ["plot_1234_ore_3"] }`)
+  - `type`: String (e.g., "IRON", "COPPER", "SILICA")
+  - `richness`: Float (density multiplier)
+  - `quantity`: Int (remaining harvestable minerals)
+  - `capacity`: Int (max richness-based capacity)
+  - `harvested`: Array of Strings (list of 3D node IDs already mined)
 
 ### Claim (Industrial Ownership)
 
@@ -190,17 +195,28 @@ graph TD
 - `status`: Enum (ACTIVE | COMPLETED | FAILED)
 - `current_progress`: Int (e.g., delivered 50/100)
 
+### GameTick (Temporal Cycle)
+
+**Purpose:** Global server-side temporal heartbeat for environment simulation (e.g. resource regeneration).
+
+- `id`: Int (Singleton `1`)
+- `current`: Int (total ticks elapsed since game start)
+- `last_tick`: Timestamp (time of last tick execution)
+
 ## 5. Components
 
 ### Game API (The Brain)
 
-**Responsibility:** Handles all REST requests (User management, Inventory actions, Market listing, Map data).
+**Responsibility:** Handles all REST requests (User management, Inventory actions, Market listing, Map data, Crafting, Game Ticks).
 **Interfaces:**
 
 - `POST /api/market/order`
 - `GET /api/user/profile`
 - `GET /api/map/sectors` (Grid View)
 - `POST /api/map/claim` (Land Ownership)
+- `POST /api/crafting/start` (Queue item craft)
+- `POST /api/gametick/trigger` (Force cycle tick)
+- `GET /api/gametick/status` (Get current clock and countdown)
   **Technology:** NestJS (HTTP Module)
 
 ### Realtime Gateway (The Nervous System)
@@ -230,6 +246,16 @@ graph TD
 **Responsibility:** Deterministic combat simulation on the 5x5 grid.
 **Input:** `SwarmA` (JSON), `SwarmB` (JSON).
 **Output:** `BattleLog` (JSON) containing turn-by-turn state changes.
+
+### Crafting Service (The Assembly Line)
+
+**Responsibility:** Manages item and equipment recipes, validates player blueprints / skills, processes wait queues, and handles equipment set calculations.
+**Technology:** NestJS (Crafting Module).
+
+### GameTick Service (The Temporal Pulse)
+
+**Responsibility:** Runs a background hourly scheduler interval, updates the database global tick state, and executes periodic regeneration routines.
+**Technology:** NestJS (GameTick Module).
 
 ### Component Diagram
 

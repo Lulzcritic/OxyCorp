@@ -38,4 +38,12 @@ export class UserController {
   ) {
     return this.userService.unequipItem(req.user.userId, body.slot);
   }
+
+  @Post('blueprints/decrypt')
+  async decryptBlueprint(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { itemId: string },
+  ) {
+    return this.userService.decryptBlueprint(req.user.userId, body.itemId);
+  }
 }

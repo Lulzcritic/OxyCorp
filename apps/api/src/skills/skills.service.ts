@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculateLevel, calculateTotalSPFromLevel } from './skills.constants';
 import { getSkillById, SKILL_REGISTRY } from './skill-registry.constants';
+import { calculateEquipmentModifiers } from '../items/equipment-effects.util';
 
 @Injectable()
 export class SkillsService {
@@ -44,14 +45,18 @@ export class SkillsService {
   async awardXP(userId: string, amount: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { xp: true, skillPoints: true },
+      select: { xp: true, skillPoints: true, equipment: true },
     });
 
     if (!user) return;
 
+    const equipment = (user.equipment as Record<string, string>) || {};
+    const { modifiers } = calculateEquipmentModifiers(equipment);
+    const finalAmount = Math.floor(amount * modifiers.xpMultiplier);
+
     const currentXP = user.xp;
     const currentLevel = calculateLevel(currentXP);
-    const newXP = currentXP + BigInt(amount);
+    const newXP = currentXP + BigInt(finalAmount);
     const newLevel = calculateLevel(newXP);
 
     const currentTotalSP = calculateTotalSPFromLevel(currentLevel);
@@ -67,7 +72,7 @@ export class SkillsService {
     });
 
     return {
-      xpAwarded: amount,
+      xpAwarded: finalAmount,
       newXP: newXP.toString(),
       levelUp: newLevel > currentLevel,
       newLevel,

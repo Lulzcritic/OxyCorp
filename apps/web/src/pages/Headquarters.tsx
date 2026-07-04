@@ -9,12 +9,14 @@ import HeadquartersScene from '../components/game/HeadquartersScene';
 import TerminalOverlay from '../components/terminals/TerminalOverlay';
 import InteractionPrompt from '../components/game/InteractionPrompt';
 import { useTerminalStore } from '../services/TerminalManager';
+import PlayerHUD from '../components/game/PlayerHUD';
 
 export default function Headquarters() {
   const isTerminalOpen = useTerminalStore((s) => s.isOpen);
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
+      <PlayerHUD />
       {/* 3D Scene */}
       <div 
         id="hq-container"

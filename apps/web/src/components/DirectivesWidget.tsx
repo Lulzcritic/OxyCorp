@@ -26,7 +26,7 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
   const [claiming, setClaiming] = useState<string | null>(null)
 
   const fetchQuests = useCallback(async () => {
-    if (!session) return
+
 
     const res = await apiFetch('/directives', {
     })
@@ -49,7 +49,7 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
   }, [refreshTrigger, fetchQuests])
 
   const generateDaily = async () => {
-    if (!session) return
+
 
     setLoading(true)
     const res = await apiFetch('/directives/daily', {
@@ -66,7 +66,7 @@ export default function DirectivesWidget({ onQuestClaimed, refreshTrigger }: Dir
   }
 
   const claimQuest = async (questId: string) => {
-    if (!session) return
+
 
     setClaiming(questId)
     const res = await apiFetch('/directives/claim', {

@@ -59,7 +59,7 @@ export default function FacilitiesWidget({ onUpgrade, inventory }: FacilitiesWid
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null)
 
   const fetchFacilities = async () => {
-    if (!session) return
+
 
     const res = await apiFetch('/bunker/facilities', {
     })
@@ -101,7 +101,7 @@ export default function FacilitiesWidget({ onUpgrade, inventory }: FacilitiesWid
   }
 
   const upgradeFacility = async (type: string) => {
-    if (!session) return
+
 
     setUpgrading(type)
     const res = await apiFetch('/bunker/upgrade', {

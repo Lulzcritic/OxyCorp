@@ -17,6 +17,8 @@ import { RefiningModule } from './refining/refining.module';
 import { BunkerModule } from './bunker/bunker.module';
 import { DirectivesModule } from './directives/directives.module';
 import { SkillsModule } from './skills/skills.module';
+import { CraftingModule } from './crafting/crafting.module';
+import { GameTickModule } from './gametick/gametick.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { SkillsModule } from './skills/skills.module';
     BunkerModule,
     DirectivesModule,
     SkillsModule,
+    CraftingModule,
+    GameTickModule,
   ],
   controllers: [AppController],
   providers: [

@@ -98,6 +98,34 @@ function RefineryBuilding() {
   );
 }
 
+function ForgeBuilding() {
+  const { scene } = useGLTF('/models/Refinery.gltf');
+  
+  const clonedScene = React.useMemo(() => {
+    const clone = scene.clone(true);
+    clone.traverse((child) => {
+      if ((child as any).isMesh) {
+        child.userData = {
+          isTerminal: true,
+          terminalType: 'CRAFTING',
+          label: 'FORGE SYSTEM',
+        };
+      }
+    });
+    return clone;
+  }, [scene]);
+
+  return (
+    <group position={[25, 0.45, -10]} rotation={[0, Math.PI, 0]}>
+      <RigidBody type="fixed" colliders={false}>
+        <MeshCollider type="trimesh">
+          <primitive object={clonedScene} scale={[20, 20, 20]} />
+        </MeshCollider>
+      </RigidBody>
+    </group>
+  );
+}
+
 
 export default function HeadquartersScene() {
   const { isEditorMode, toggleEditorMode, playerCoords } = useEditorStore();
@@ -139,10 +167,10 @@ export default function HeadquartersScene() {
             <BunkerExterior />
             <Vehicle />
             <RefineryBuilding />
+            <ForgeBuilding />
 
             {/* Player */}
-            <PlayerController spawnPosition={[-6.06, 1, -1]} />
-
+            <PlayerController spawnPosition={[-6.06, 2, -5]}/>
             {/* Environment map for realistic PBR reflections */}
             <Environment preset="sunset" background={false} />
           </Physics>

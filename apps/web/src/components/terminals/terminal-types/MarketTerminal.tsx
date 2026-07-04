@@ -27,7 +27,7 @@ export default function MarketTerminal() {
 
   const fetchProfile = async () => {
     try {
-      if (!session) return;
+
 
       const res = await apiFetch('/user/profile', {
       });

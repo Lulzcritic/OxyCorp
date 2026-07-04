@@ -36,8 +36,6 @@ export default function MarketWidget({ inventory = [], onListingCreated }: Marke
 
   const fetchListings = async () => {
     setLoading(true)
-    if (!session) return
-
     const res = await apiFetch('/market/listings', {
     })
 
@@ -55,8 +53,6 @@ export default function MarketWidget({ inventory = [], onListingCreated }: Marke
 
   const handleBuy = async (id: string, cost: number) => {
     if (!confirm(`Buy this listing for ${cost} Credits?`)) return
-
-    if (!session) return
 
     const res = await apiFetch(`/market/buy/${id}`, {
       method: 'POST',
@@ -77,8 +73,6 @@ export default function MarketWidget({ inventory = [], onListingCreated }: Marke
     
     setIsSubmitting(true);
     try {
-      if (!session) return
-
       const res = await apiFetch(`/market/orders`, {
         method: 'POST',
         headers: { 

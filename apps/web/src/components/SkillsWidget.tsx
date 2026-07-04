@@ -45,7 +45,7 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
   const [unlocking, setUnlocking] = useState(false)
 
   const fetchSkills = async () => {
-    if (!session) return
+
 
     const res = await apiFetch('/skills', {
     })
@@ -74,7 +74,7 @@ export default function SkillsWidget({ onSkillUnlock }: SkillsWidgetProps) {
   }
 
   const unlockSkill = async (skillId: string) => {
-    if (!session) return
+
 
     setUnlocking(true)
     const res = await apiFetch('/skills/unlock', {

@@ -10,6 +10,7 @@ datasource db {
 enum JobType {
   MINING
   REFINING
+  CRAFTING
 }
 
 enum JobStatus {
@@ -53,6 +54,7 @@ model User {
   xp             BigInt      @default(0)
   skillPoints    Int         @default(0) @map("skill_points")
   equipment      Json?       // e.g. { head: "itemId", body: "itemId", weapon: "itemId" }
+  blueprints     Json?       // e.g. ["CRAFT_EXOSUIT_V1"]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   
@@ -233,4 +235,12 @@ model TownSnapshot {
   player    User     @relation(fields: [playerId], references: [id])
 
   @@map("town_snapshots")
+}
+
+model GameTick {
+  id        Int      @id @default(1)
+  current   Int      @default(0)
+  lastTick  DateTime @default(now())
+
+  @@map("game_ticks")
 }

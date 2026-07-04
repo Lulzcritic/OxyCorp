@@ -17,6 +17,7 @@ import MarketTerminal from './terminal-types/MarketTerminal';
 import WarRoomTerminal from './terminal-types/WarRoomTerminal';
 import RefineryTerminal from './terminal-types/RefineryTerminal';
 import MapTerminal from './terminal-types/MapTerminal';
+import CraftingTerminal from './terminal-types/CraftingTerminal';
 
 export default function TerminalRouter() {
   const activeTerminal = useTerminalStore((state) => state.activeTerminal);
@@ -53,6 +54,9 @@ export default function TerminalRouter() {
     
     case TerminalType.VEHICLE_MAP:
       return <MapTerminal />;
+    
+    case TerminalType.CRAFTING:
+      return <CraftingTerminal />;
     
     default:
       return (

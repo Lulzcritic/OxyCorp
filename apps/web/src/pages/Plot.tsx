@@ -11,6 +11,7 @@ import PlotScene from '../components/game/PlotScene';
 import TerminalOverlay from '../components/terminals/TerminalOverlay';
 import InteractionPrompt from '../components/game/InteractionPrompt';
 import { useTerminalStore } from '../services/TerminalManager';
+import PlayerHUD from '../components/game/PlayerHUD';
 
 function hashStringToInt(str: string): number {
   let hash = 0;
@@ -38,6 +39,7 @@ export default function Plot() {
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
+      <PlayerHUD />
       {/* 3D Scene */}
       <div 
         id="plot-container"

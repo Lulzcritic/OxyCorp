@@ -9,6 +9,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { Environment } from '@react-three/drei';
+import { useParams } from 'react-router-dom';
+import { apiFetch } from '../../lib/api';
 import PlayerController from './PlayerController';
 import PlotTerrain from './PlotTerrain';
 import MartianLighting from './MartianLighting';
@@ -23,12 +25,37 @@ interface PlotSceneProps {
 export default function PlotScene({ seed, isOwned }: PlotSceneProps) {
   const { isEditorMode, toggleEditorMode, playerCoords } = useEditorStore();
   const resetPlot = usePlotStore((s) => s.resetPlot);
+  const setResources = usePlotStore((s) => s.setResources);
+  const { id } = useParams<{ id: string }>();
   const [copied, setCopied] = useState(false);
 
   // Clear harvest states when entering a new plot seed
   useEffect(() => {
     resetPlot();
   }, [seed, resetPlot]);
+
+  // Load sector resources from server to determine active/depleted node visual states
+  useEffect(() => {
+    if (!id) return;
+    const loadSectorResources = async () => {
+      try {
+        const res = await apiFetch(`/map/sector/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.resources) {
+            const richness = data.resources.richness || 0.5;
+            const cap = data.resources.capacity !== undefined ? data.resources.capacity : Math.floor(1000 * richness);
+            const qty = data.resources.quantity !== undefined ? data.resources.quantity : cap;
+            const harvested = Array.isArray(data.resources.harvested) ? data.resources.harvested : [];
+            setResources(qty, cap, harvested);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load sector resources:', err);
+      }
+    };
+    loadSectorResources();
+  }, [id, seed, setResources]);
 
   const coordString = `[${playerCoords[0]}, ${playerCoords[1]}, ${playerCoords[2]}]`;
 

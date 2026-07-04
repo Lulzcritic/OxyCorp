@@ -383,6 +383,95 @@ The browser MMORPG market is bifurcated between accessible but shallow "clickers
 1.  **Trigger:** Event-based (e.g., "Craft your first Drone").
 2.  **Reward:** Grants Skill Points (SP).
 
+---
+
+### Epic 16: The Outpost Forge & Item Crafting
+**Goal:** Implement the physical Forge facility outside the bunker and allow players to queue and craft advanced gear.
+
+#### Story 16.1: Outpost Forge UI
+- **As a** Player, **I want** to access a physical Forge terminal outside the bunker, **so that** I can open the crafting dashboard.
+- **Acceptance Criteria:**
+  1. Interactive Forge terminal placed in the 3D environment outside the bunker.
+  2. UI lists available recipes, ingredients, and active crafting jobs.
+
+#### Story 16.2: Crafting Recipes & Queue
+- **As a** Player, **I want** to spend raw resources to craft items, **so that** I can upgrade my equipment.
+- **Acceptance Criteria:**
+  1. Recipes define input costs, duration, and output item.
+  2. Crafting jobs queue on the server and process asynchronously over time.
+
+---
+
+### Epic 17: Equipment Slots & Diablo-Style Item Sets
+**Goal:** Allow players to equip gear, apply stat modifiers, and benefit from set bonuses.
+
+#### Story 17.1: Equipment Slots & Modifiers
+- **As a** Player, **I want** to equip items in specific slots (Helmet, Chest, Boots, Weapon), **so that** I gain stat boosts (e.g., +20% mining speed).
+- **Acceptance Criteria:**
+  1. Profile endpoint stores active equipment.
+  2. Mining and refining speeds adjust dynamically based on equipped item modifiers.
+
+#### Story 17.2: Item Set Bonuses
+- **As a** Warlord, **I want** a set bonus (like in Diablo) when equipping a complete set of matching gear, **so that** I get major attribute multipliers.
+- **Acceptance Criteria:**
+  1. Matching sets (e.g., "Excavator") define a full-set bonus (e.g., +50% mining yield).
+  2. Server calculates active sets and applies compound modifiers to harvests.
+
+#### Story 17.3: Unified Admin Registry
+- **As a** Game Administrator, **I want** a single configuration file that defines all items, stats, and sets, **so that** I can easily add new gear.
+- **Acceptance Criteria:**
+  1. Registry files (`items-registry.constants.ts` & `equipment-sets-registry.constants.ts`) standardise the format.
+  2. GDD files align with implementation registries.
+
+---
+
+### Epic 18: Neural Blueprint Decryption (Gating & Hard Drives)
+**Goal:** Restrict advanced recipes behind blueprint unlocks and implement decryption mechanics.
+
+#### Story 18.1: Recipe Gating
+- **As a** Player, **I want** advanced recipes to remain hidden and locked until I unlock the blueprint, **so that** my progression feels earned.
+- **Acceptance Criteria:**
+  1. Crafting endpoint checks player's decrypted blueprint list before displaying or starting a job.
+
+#### Story 18.2: Hard Drive Decryption
+- **As a** Scavenger, **I want** to find "Hard Drives" and decrypt them in the bunker, **so that** I can discover hidden blueprints.
+- **Acceptance Criteria:**
+  1. Hard Drive item can be spent to trigger decryption.
+  2. Decryption yields a random blueprint and stores it in the player's profile data.
+
+---
+
+### Epic 19: Martian Clock & Server Game Ticks
+**Goal:** Introduce a server-synchronized temporal clock to drive resource depletion and regeneration.
+
+#### Story 19.1: Server-Side Game Tick
+- **As a** Server Administrator, **I want** a global hourly tick, **so that** environmental updates are computed reliably.
+- **Acceptance Criteria:**
+  1. `GameTick` model tracks the current tick count.
+  2. Hourly server interval increments the tick and fires background events.
+  3. POST `/gametick/trigger` bypasses the interval for developer testing.
+
+#### Story 19.2: Depletion & Richness-Capped Regeneration
+- **As a** Miner, **I want** resources on sectors to deplete when harvested and regenerate slowly on each tick, **so that** resource availability is finite.
+- **Acceptance Criteria:**
+  1. Sector resources have a maximum capacity equal to `1000 * richness`.
+  2. Mining deducts quantity; harvests are rejected at 0 quantity.
+  3. Every tick regenerates 10% of capacity, capped at max capacity.
+
+#### Story 19.3: Martian Clock HUD
+- **As a** Player, **I want** to see the current Martian year, month, day, and hour on my screen, **so that** I can plan my harvests.
+- **Acceptance Criteria:**
+  1. HUD displays Darian Martian Calendar stamps (e.g. `SOL 1 SAGITTARIUS 3615 | 00:00`).
+  2. Uses a local timer to count down to the next tick, avoiding database polling.
+
+#### Story 19.4: Persistent 3D Crystal Depletion
+- **As a** Player, **I want** mined crystals to remain dark and depleted when I leave and re-enter a sector, **so that** the 3D scene is consistent.
+- **Acceptance Criteria:**
+  1. Database tracks harvested node IDs.
+  2. Scene renders corresponding crystals as gray and un-interactable.
+
+---
+
 ## 7. Checklist Results Report
 
 ### PM Checklist Results

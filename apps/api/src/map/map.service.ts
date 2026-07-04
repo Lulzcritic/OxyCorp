@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Sector, SectorType } from '@prisma/client';
 import { SkillsService } from '../skills/skills.service';
 import { CLAIM_COST_CREDITS, OUTPOST_COST } from './map.constants';
+import { calculateEquipmentModifiers } from '../items/equipment-effects.util';
 
 @Injectable()
 export class MapService {
@@ -10,6 +11,12 @@ export class MapService {
     private prisma: PrismaService,
     private skillsService: SkillsService,
   ) {}
+
+  async getSector(id: string) {
+    return this.prisma.sector.findUnique({
+      where: { id },
+    });
+  }
 
   async getSectors(
     centerX: bigint,
@@ -220,8 +227,14 @@ export class MapService {
         if (rand > 0.9) type = 'SILICA';
 
         const richness = 0.5 + Math.random(); 
-        const quantity = Math.floor(1000 * richness);
-        const resources = { type, richness: parseFloat(richness.toFixed(2)), quantity };
+        const capacity = Math.floor(1000 * richness);
+        const resources = {
+          type,
+          richness: parseFloat(richness.toFixed(2)),
+          quantity: capacity,
+          capacity,
+          harvested: [],
+        };
 
         await this.prisma.sector.update({
           where: { id: s.id },
@@ -257,6 +270,152 @@ export class MapService {
     await this.prisma.user.deleteMany({});
     
     return { status: 'WIPED' };
+  }
+
+  /**
+   * Harvest a resource node in 3D (instant mining)
+   */
+  async harvestNode(userId: string, sectorId: string, nodeId: string) {
+    // 1. Verify ownership
+    const sector = await this.prisma.sector.findUnique({
+      where: { id: sectorId },
+    });
+
+    if (!sector) {
+      throw new BadRequestException('Sector not found.');
+    }
+
+    if (sector.ownerId !== userId) {
+      throw new BadRequestException('You do not own this sector.');
+    }
+
+    // 2. Determine resource type, richness, capacity and quantity from sector
+    let resourceType = 'RAW_ORE';
+    let yieldAmount = 5;
+    let resData: any = {};
+
+    if (sector.resources) {
+      resData = sector.resources as any;
+      if (resData.type) {
+        resourceType = resData.type;
+      }
+      if (resData.richness) {
+        yieldAmount = Math.max(5, Math.floor(10 * resData.richness));
+      }
+    }
+
+    const richness = resData.richness || 0.5;
+    const capacity = resData.capacity || Math.floor(1000 * richness);
+    const currentQty = resData.quantity !== undefined ? resData.quantity : capacity;
+
+    if (currentQty <= 0) {
+      throw new BadRequestException('This sector resources are depleted. Wait for the next tick.');
+    }
+
+    // Calculate yield modifier from equipment
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { equipment: true }
+    });
+    const equipment = (user?.equipment as Record<string, string>) || {};
+    const { modifiers } = calculateEquipmentModifiers(equipment);
+    
+    // Ensure final yield does not exceed remaining quantity
+    const rawYield = Math.floor(yieldAmount * modifiers.miningMultiplier);
+    const finalYield = Math.min(rawYield, currentQty);
+
+    const nextQty = Math.max(0, currentQty - finalYield);
+
+    // Update sector resources and add to inventory in a transaction
+    return this.prisma.$transaction(async (tx) => {
+      const harvestedList = Array.isArray(resData.harvested) ? [...resData.harvested] : [];
+      if (!harvestedList.includes(nodeId)) {
+        harvestedList.push(nodeId);
+      }
+
+      const updatedResources = {
+        ...resData,
+        quantity: nextQty,
+        capacity,
+        harvested: harvestedList,
+      };
+
+      await tx.sector.update({
+        where: { id: sectorId },
+        data: { resources: updatedResources },
+      });
+
+      await tx.inventory.upsert({
+        where: {
+          userId_item: {
+            userId,
+            item: resourceType,
+          },
+        },
+        update: {
+          quantity: { increment: finalYield },
+        },
+        create: {
+          userId,
+          item: resourceType,
+          quantity: finalYield,
+        },
+      });
+
+      return {
+        success: true,
+        mined: resourceType,
+        amount: finalYield,
+        nodeId,
+        remainingQty: nextQty,
+        capacity,
+        harvested: harvestedList,
+      };
+    });
+  }
+
+  async regenerateResources(): Promise<number> {
+    const sectors = await this.prisma.sector.findMany({
+      where: { type: 'RESOURCE' },
+    });
+
+    let regeneratedCount = 0;
+
+    for (const s of sectors) {
+      if (!s.resources) continue;
+      const resData = s.resources as any;
+      const richness = resData.richness || 0.5;
+      const capacity = resData.capacity || Math.floor(1000 * richness);
+      const currentQty = resData.quantity !== undefined ? resData.quantity : capacity;
+
+      if (currentQty < capacity) {
+        // Regenerate 10% of capacity (minimum 50, capped at capacity)
+        const regenAmount = Math.max(50, Math.floor(capacity * 0.1));
+        const nextQty = Math.min(capacity, currentQty + regenAmount);
+
+        // Adjust the harvested nodes array proportionally
+        let harvestedList = Array.isArray(resData.harvested) ? [...resData.harvested] : [];
+        const activeCount = Math.min(15, Math.ceil((nextQty / capacity) * 15));
+        const numHarvestedToKeep = Math.max(0, 15 - activeCount);
+        harvestedList = harvestedList.slice(0, numHarvestedToKeep);
+
+        const updatedResources = {
+          ...resData,
+          quantity: nextQty,
+          capacity,
+          harvested: harvestedList,
+        };
+
+        await this.prisma.sector.update({
+          where: { id: s.id },
+          data: { resources: updatedResources },
+        });
+
+        regeneratedCount++;
+      }
+    }
+
+    return regeneratedCount;
   }
 }
 

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MapSpawningService } from '../map/map.spawning.service';
 import { SectorType } from '@prisma/client';
+import { ITEMS_REGISTRY, ItemType } from '../items/items-registry.constants';
+import { calculateEquipmentModifiers } from '../items/equipment-effects.util';
 @Injectable()
 export class UserService {
   constructor(
@@ -86,6 +88,20 @@ export class UserService {
   }
 
   async equipItem(userId: string, slot: string, itemId: string, quantity = 1) {
+    const VALID_SLOTS = ['head', 'body', 'weapon', 'tool'];
+    if (!VALID_SLOTS.includes(slot)) {
+      throw new Error('Invalid equipment slot');
+    }
+
+    const itemDef = ITEMS_REGISTRY[itemId];
+    if (!itemDef || itemDef.type !== ItemType.EQUIPMENT) {
+      throw new Error('This item cannot be equipped');
+    }
+
+    if (itemDef.equipableSlot !== slot) {
+      throw new Error(`This item can only be equipped in the ${itemDef.equipableSlot} slot`);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
@@ -184,11 +200,68 @@ export class UserService {
     });
   }
 
+  async decryptBlueprint(userId: string, hardDriveItemId: string) {
+    const itemDef = ITEMS_REGISTRY[hardDriveItemId];
+    if (!itemDef || !itemDef.blueprintRecipeId) {
+      throw new Error('This item does not contain a valid blueprint');
+    }
+
+    const recipeId = itemDef.blueprintRecipeId;
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: { inventory: true },
+      });
+
+      if (!user) throw new Error('User not found');
+
+      // Check if hard drive is in inventory
+      const invItem = user.inventory.find((i) => i.item === hardDriveItemId);
+      if (!invItem || invItem.quantity < 1n) {
+        throw new Error('You do not possess this hard drive');
+      }
+
+      // Check if already unlocked
+      const blueprints = (user.blueprints as string[]) || [];
+      if (blueprints.includes(recipeId)) {
+        throw new Error('This blueprint is already unlocked');
+      }
+
+      // Consume hard drive
+      if (invItem.quantity === 1n) {
+        await tx.inventory.delete({ where: { id: invItem.id } });
+      } else {
+        await tx.inventory.update({
+          where: { id: invItem.id },
+          data: { quantity: invItem.quantity - 1n },
+        });
+      }
+
+      // Add blueprint to unlocked list
+      const updatedBlueprints = [...blueprints, recipeId];
+
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { blueprints: updatedBlueprints },
+        include: { inventory: true },
+      });
+
+      return this.serializeUser(updatedUser);
+    });
+  }
+
   private serializeUser(user: any) {
+    const equipment = (user.equipment as Record<string, string>) || {};
+    const { modifiers, activeSets } = calculateEquipmentModifiers(equipment);
+
     return {
       ...user,
       credits: user.credits.toString(),
-      equipment: user.equipment || {},
+      equipment,
+      modifiers,
+      activeSets,
+      blueprints: user.blueprints || [],
       inventory: user.inventory?.map((slot: any) => ({
         ...slot,
         quantity: slot.quantity.toString(),

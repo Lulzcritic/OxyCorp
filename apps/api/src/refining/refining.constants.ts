@@ -12,7 +12,7 @@ export const REFINING_RECIPES: Record<string, RefiningRecipe> = {
   IRON_TO_STEEL: {
     id: 'IRON_TO_STEEL',
     name: 'Smelt Iron to Steel',
-    inputItem: 'IRON_ORE',
+    inputItem: 'IRON',
     inputQty: 10,
     outputItem: 'STEEL_PLATING',
     outputQty: 1,
