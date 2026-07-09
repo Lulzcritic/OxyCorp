@@ -12,12 +12,45 @@ export class MarketService {
   ) {}
 
   async createListing(userId: string, dto: CreateListingDto) {
-    // Transactional Escrow:
-    // 1. Verify and Deduct Inventory
-    // 2. Create Listing
-
     return this.prisma.$transaction(async (tx) => {
-      // 1. Check Inventory
+      if (dto.itemId === 'CARTRIDGE_PROGRAMMED') {
+        if (!dto.cartridgeId) {
+          throw new BadRequestException('Cartridge ID must be provided to list a programmed cartridge.');
+        }
+
+        const cartridge = await tx.cartridge.findUnique({
+          where: { id: dto.cartridgeId },
+        });
+
+        if (!cartridge || cartridge.userId !== userId) {
+          throw new BadRequestException('Cartridge not found or not owned by you.');
+        }
+
+        // Escrow cartridge: transfer to system escrow user id
+        await tx.cartridge.update({
+          where: { id: dto.cartridgeId },
+          data: { userId: '00000000-0000-0000-0000-999999999999' },
+        });
+
+        const listing = await tx.marketListing.create({
+          data: {
+            sellerId: userId,
+            itemId: dto.itemId,
+            cartridgeId: dto.cartridgeId,
+            quantity: 1n, // Only 1 cartridge can be listed per market listing
+            pricePerUnit: BigInt(dto.price),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours expiry default
+          },
+        });
+
+        return {
+          ...listing,
+          quantity: listing.quantity.toString(),
+          pricePerUnit: listing.pricePerUnit.toString(),
+        };
+      }
+
+      // Standard Item Inventory Check
       const userInventory = await tx.inventory.findUnique({
         where: {
           userId_item: {
@@ -31,7 +64,7 @@ export class MarketService {
         throw new BadRequestException('Insufficient inventory to list items.');
       }
 
-      // 2. Deduct Inventory
+      // Deduct Inventory
       await tx.inventory.update({
         where: { id: userInventory.id },
         data: {
@@ -39,7 +72,7 @@ export class MarketService {
         },
       });
 
-      // 3. Create Listing
+      // Create Listing
       const listing = await tx.marketListing.create({
         data: {
           sellerId: userId,
@@ -50,7 +83,6 @@ export class MarketService {
         },
       });
 
-      // Convert BigInt for JSON response
       return {
         ...listing,
         quantity: listing.quantity.toString(),
@@ -65,7 +97,10 @@ export class MarketService {
         expiresAt: { gt: new Date() },
         isBuyOrder: false,
       },
-      include: { seller: { select: { username: true } } },
+      include: {
+        seller: { select: { username: true } },
+        cartridge: { select: { name: true, bytecode: true } }
+      },
       orderBy: { pricePerUnit: 'asc' },
     });
 
@@ -74,6 +109,8 @@ export class MarketService {
       quantity: l.quantity.toString(),
       pricePerUnit: l.pricePerUnit.toString(),
       sellerName: l.seller.username,
+      cartridgeName: l.cartridge?.name || null,
+      bytecodeSize: l.cartridge ? Math.round(Buffer.from(l.cartridge.bytecode, 'base64').length) : null,
     }));
   }
 
@@ -91,7 +128,7 @@ export class MarketService {
       const buyer = await tx.user.findUnique({ where: { id: buyerId } });
       if (!buyer) throw new BadRequestException('Buyer not found.');
 
-      const totalCost = listing.pricePerUnit * listing.quantity; // Buying full listing for MVP
+      const totalCost = listing.pricePerUnit * listing.quantity;
 
       if (buyer.credits < totalCost) {
         throw new BadRequestException('Insufficient credits.');
@@ -108,22 +145,32 @@ export class MarketService {
         data: { credits: { increment: totalCost } },
       });
 
-      // 3. Transfer Items (Upsert for Buyer)
-      await tx.inventory.upsert({
-        where: {
-          userId_item: { userId: buyerId, item: listing.itemId },
-        },
-        create: {
-          userId: buyerId,
-          item: listing.itemId,
-          quantity: listing.quantity,
-        },
-        update: {
-          quantity: { increment: listing.quantity },
-        },
-      });
+      // 3. Transfer Items (Or cartridge ownership)
+      if (listing.itemId === 'CARTRIDGE_PROGRAMMED') {
+        if (!listing.cartridgeId) {
+          throw new BadRequestException('Programmed cartridge ID is missing.');
+        }
+        await tx.cartridge.update({
+          where: { id: listing.cartridgeId },
+          data: { userId: buyerId },
+        });
+      } else {
+        await tx.inventory.upsert({
+          where: {
+            userId_item: { userId: buyerId, item: listing.itemId },
+          },
+          create: {
+            userId: buyerId,
+            item: listing.itemId,
+            quantity: listing.quantity,
+          },
+          update: {
+            quantity: { increment: listing.quantity },
+          },
+        });
+      }
 
-      // 4. Delete Listing (Mark as filled/sold - deleting for simplicity as per plan)
+      // 4. Delete Listing
       await tx.marketListing.delete({ where: { id: listingId } });
 
       // 5. Audit Log

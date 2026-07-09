@@ -49,13 +49,28 @@ export class JobsService {
       throw new BadRequestException('You already have an active job.');
     }
 
-    // Create job (fixed 60s duration for MVP)
+    // Fetch active global event for modifiers
+    const activeEvent = await this.prisma.globalEvent.findFirst({
+      where: { active: true },
+    });
+
+    let durationMultiplier = 1.0;
+    if (activeEvent && typeof activeEvent.effects === 'object' && activeEvent.effects !== null) {
+      const effects = activeEvent.effects as Record<string, any>;
+      if (typeof effects.miningDurationMultiplier === 'number') {
+        durationMultiplier = effects.miningDurationMultiplier;
+      }
+    }
+
+    const durationSeconds = Math.round(60 * durationMultiplier);
+
+    // Create job
     return this.prisma.job.create({
       data: {
         userId,
         type: dto.type,
         status: JobStatus.ACTIVE,
-        durationSeconds: 60,
+        durationSeconds,
         rewardItemId: dto.resource || 'IRON_ORE',
         sectorId: dto.sectorId,
       },

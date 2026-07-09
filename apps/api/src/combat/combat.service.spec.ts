@@ -17,14 +17,16 @@ describe('CombatService', () => {
 
   const mockSwarmA = {
     id: 'swarm-a',
+    userId: 'user-a',
     name: 'Swarm A',
-    formation: [{ droneId: 'DRONE_ATTACK_V1' }],
+    formation: [{ droneId: 'DRONE_ATTACK_V1', slotIndex: 0, count: 5 }],
   };
 
   const mockSwarmB = {
     id: 'swarm-b',
+    userId: 'user-b',
     name: 'Swarm B',
-    formation: [{ droneId: 'DRONE_ATTACK_V1' }],
+    formation: [{ droneId: 'DRONE_ATTACK_V1', slotIndex: 0, count: 5 }],
   };
 
   beforeEach(async () => {
@@ -39,6 +41,15 @@ describe('CombatService', () => {
             },
             swarm: {
               findMany: jest.fn().mockResolvedValue([mockSwarmA, mockSwarmB]),
+            },
+            user: {
+              findUnique: jest.fn().mockResolvedValue(null),
+            },
+            gameTick: {
+              findUnique: jest.fn().mockResolvedValue({ season: 1 }),
+            },
+            userSeasonStats: {
+              upsert: jest.fn().mockResolvedValue(null),
             },
           },
         },
@@ -56,7 +67,7 @@ describe('CombatService', () => {
   it('should resolve a battle between two swarms', async () => {
     const result = await service.resolveBattle('swarm-a', 'swarm-b');
     expect(result).toBeDefined();
-    expect(result.log.length).toBeGreaterThan(0);
+    expect(result.ticks.length).toBeGreaterThan(0);
     expect(prisma.droneVariant.findUnique).toHaveBeenCalledWith({
       where: { id: 'DRONE_ATTACK_V1' },
     });

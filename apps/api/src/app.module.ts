@@ -19,6 +19,11 @@ import { DirectivesModule } from './directives/directives.module';
 import { SkillsModule } from './skills/skills.module';
 import { CraftingModule } from './crafting/crafting.module';
 import { GameTickModule } from './gametick/gametick.module';
+import { CartridgesModule } from './cartridges/cartridges.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { CompanyAIModule } from './company-ai/company-ai.module';
+import { RpgModule } from './rpg/rpg.module';
+import { TownModule } from './town/town.module';
 
 @Module({
   imports: [
@@ -38,6 +43,11 @@ import { GameTickModule } from './gametick/gametick.module';
     SkillsModule,
     CraftingModule,
     GameTickModule,
+    CartridgesModule,
+    LeaderboardModule,
+    CompanyAIModule,
+    RpgModule,
+    TownModule,
   ],
   controllers: [AppController],
   providers: [

@@ -4,12 +4,14 @@ import { Sector, SectorType } from '@prisma/client';
 import { SkillsService } from '../skills/skills.service';
 import { CLAIM_COST_CREDITS, OUTPOST_COST } from './map.constants';
 import { calculateEquipmentModifiers } from '../items/equipment-effects.util';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class MapService {
   constructor(
     private prisma: PrismaService,
     private skillsService: SkillsService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async getSector(id: string) {
@@ -81,6 +83,26 @@ export class MapService {
       throw new BadRequestException('This sector is already owned.');
     }
 
+    // Check if within protected Town perimeter (radius = 1)
+    const townRadius = 1;
+    const nearbyTown = await this.prisma.sector.findFirst({
+      where: {
+        type: SectorType.TOWN,
+        x: {
+          gte: BigInt(x - townRadius),
+          lte: BigInt(x + townRadius),
+        },
+        y: {
+          gte: BigInt(y - townRadius),
+          lte: BigInt(y + townRadius),
+        },
+      },
+    });
+
+    if (nearbyTown) {
+      throw new BadRequestException('This sector is within a protected Town perimeter and cannot be claimed.');
+    }
+
     if (sector.type !== SectorType.EMPTY && sector.type !== SectorType.RESOURCE) {
       throw new BadRequestException('Only EMPTY or RESOURCE sectors can be claimed.');
     }
@@ -93,24 +115,26 @@ export class MapService {
       );
     }
 
-    // 4. Check user credits
+    const CLAIM_COST_SERVICE_CREDITS = 10;
+
+    // 4. Check user serviceCredits
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { credits: true },
+      select: { serviceCredits: true },
     });
 
-    if (!user || user.credits < BigInt(CLAIM_COST_CREDITS)) {
+    if (!user || user.serviceCredits < CLAIM_COST_SERVICE_CREDITS) {
       throw new BadRequestException(
-        `Insufficient credits. Need ${CLAIM_COST_CREDITS}, have ${user?.credits || 0}.`
+        `Insufficient Service Credits. Need ${CLAIM_COST_SERVICE_CREDITS}, have ${user?.serviceCredits || 0}. Complete Company Directives to earn Service Credits.`
       );
     }
 
     // 5. Claim the sector (atomic transaction)
     return this.prisma.$transaction(async (tx) => {
-      // Deduct credits
+      // Deduct service credits
       await tx.user.update({
         where: { id: userId },
-        data: { credits: { decrement: BigInt(CLAIM_COST_CREDITS) } },
+        data: { serviceCredits: { decrement: CLAIM_COST_SERVICE_CREDITS } },
       });
 
       // Assign ownership
@@ -122,7 +146,7 @@ export class MapService {
       return {
         success: true,
         sector: claimed,
-        creditsSpent: CLAIM_COST_CREDITS,
+        serviceCreditsSpent: CLAIM_COST_SERVICE_CREDITS,
         newPlotCount: count + 1,
         plotLimit: limit,
       };
@@ -327,7 +351,7 @@ export class MapService {
     const nextQty = Math.max(0, currentQty - finalYield);
 
     // Update sector resources and add to inventory in a transaction
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const harvestedList = Array.isArray(resData.harvested) ? [...resData.harvested] : [];
       if (!harvestedList.includes(nodeId)) {
         harvestedList.push(nodeId);
@@ -372,6 +396,15 @@ export class MapService {
         harvested: harvestedList,
       };
     });
+
+    // Emit mining event for quest progress tracking
+    this.eventEmitter.emit('mining.complete', {
+      userId,
+      item: resourceType,
+      quantity: finalYield,
+    });
+
+    return result;
   }
 
   async regenerateResources(): Promise<number> {

@@ -27,13 +27,15 @@ export class SwarmsController {
     @Body()
     body: {
       name: string;
-      formation: { droneId: string; x: number; y: number }[];
+      formation: { droneId: string; slotIndex: number; count: number }[];
+      cartridgeId?: string | null;
     },
   ) {
     return this.swarmsService.saveSwarm(
       req.user.userId,
       body.name,
       body.formation,
+      body.cartridgeId,
     );
   }
 

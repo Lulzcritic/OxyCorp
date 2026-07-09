@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard'
 import WarRoom from './pages/WarRoom'
 import Bunker from './pages/Bunker'
 import Headquarters from './pages/Headquarters'
+import Town from './pages/Town'
 import Plot from './pages/Plot'
 import { ChatProvider } from './context/ChatContext'
 import ChatDrawer from './components/ChatDrawer'
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/war-room" element={<WarRoom />} />
           <Route path="/bunker" element={<Bunker />} />
           <Route path="/hq" element={<Headquarters />} />
+          <Route path="/town" element={<Town />} />
           <Route path="/plot/:id" element={<Plot />} />
         </Route>
 

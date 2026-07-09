@@ -57,12 +57,12 @@ describe('Map Spawning & User Integration (e2e)', () => {
     expect(s1Bunker).toBeDefined();
     expect(s1Resource).toBeDefined();
 
-    console.log(`User 1 Bunker: (${s1Bunker.x}, ${s1Bunker.y})`);
-    console.log(`User 1 Resource: (${s1Resource.x}, ${s1Resource.y})`);
+    console.log(`User 1 Bunker: (${s1Bunker!.x}, ${s1Bunker!.y})`);
+    console.log(`User 1 Resource: (${s1Resource!.x}, ${s1Resource!.y})`);
 
     // Ensure adjacency
-    const dx = BigInt(s1Bunker.x) - BigInt(s1Resource.x);
-    const dy = BigInt(s1Bunker.y) - BigInt(s1Resource.y);
+    const dx = BigInt(s1Bunker!.x) - BigInt(s1Resource!.x);
+    const dy = BigInt(s1Bunker!.y) - BigInt(s1Resource!.y);
     // Manhattan distance should be 1
     const dist = (dx > 0 ? dx : -dx) + (dy > 0 ? dy : -dy);
     expect(dist).toBe(1n);
@@ -76,7 +76,7 @@ describe('Map Spawning & User Integration (e2e)', () => {
     expect(s2Resource).toBeDefined();
 
     // Ensure distinct from User 1
-    const distinct = s1Bunker.x !== s2Bunker.x || s1Bunker.y !== s2Bunker.y;
+    const distinct = s1Bunker!.x !== s2Bunker!.x || s1Bunker!.y !== s2Bunker!.y;
     expect(distinct).toBe(true);
   });
 });

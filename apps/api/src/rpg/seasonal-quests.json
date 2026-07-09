@@ -1,0 +1,125 @@
+[
+  {
+    "id": "TUTORIAL_01_WELCOME",
+    "title": "Martian Awakening",
+    "description": "Report to Sister Helena at the Smelting Bay as ordered by Navigateur Decimus.",
+    "difficulty": "TUTORIAL",
+    "giverNpc": "DECIMUS",
+    "requirements": null,
+    "objective": {
+      "type": "TALK_TO",
+      "npcId": "HELENA"
+    },
+    "rewards": {
+      "credits": 50,
+      "serviceCredits": 5,
+      "xp": 50
+    },
+    "initialDialogue": {
+      "START": {
+        "text": "Operator. The dust has settled on your landing pod, but your contract with OxyCorp is just beginning. I am Navigateur Decimus. Before you can claim lands, you must register your extraction gear. Report to Sister Helena in the Smelting Bay. She will verify your credentials.",
+        "choices": [
+          { "text": "Who is Sister Helena?", "nextNode": "HELENA_INFO" },
+          { "text": "Understood. I will go now.", "nextNode": "ACCEPT_STAGE" }
+        ]
+      },
+      "HELENA_INFO": {
+        "text": "She oversees the furnaces and drone fabrication. She has little patience for slow operators. Do not keep her waiting.",
+        "choices": [
+          { "text": "Yes, sir.", "nextNode": "ACCEPT_STAGE" }
+        ]
+      },
+      "ACCEPT_STAGE": {
+        "text": "I will register your path. Connect to her terminal once you arrive in the communications log.",
+        "choices": [
+          { "text": "[ACCEPT CONTRACT] I'm on my way.", "nextNode": "CLOSE", "trigger": "ACCEPT_QUEST" }
+        ]
+      }
+    },
+    "progressDialogue": {
+      "START": {
+        "text": "Helena is waiting in the Smelting Bay. Clear the channel until you have spoken to her.",
+        "choices": [
+          { "text": "[Disconnect]", "nextNode": "CLOSE", "trigger": "CLOSE_DIALOGUE" }
+        ]
+      }
+    },
+    "completedDialogue": {
+      "START": {
+        "text": "So, Decimus sent another raw recruit. You look fragile, but at least your telemetry is active. I am Sister Helena. I have logged your arrival in the register.",
+        "choices": [
+          { "text": "[COMPLETE CONTRACT] Log my credentials.", "nextNode": "FINISH", "trigger": "COMPLETE_QUEST" }
+        ]
+      },
+      "FINISH": {
+        "text": "Credentials confirmed. Decimus has released 5 Service Credits to your account. Welcome to the Red Tomb, Operator.",
+        "choices": [
+          { "text": "[Disconnect]", "nextNode": "CLOSE", "trigger": "CLOSE_DIALOGUE" }
+        ]
+      }
+    }
+  },
+  {
+    "id": "TUTORIAL_02_IRON_MINE",
+    "title": "First Extraction",
+    "description": "Mine 10 units of raw Iron from the surrounding sectors and return to Sister Helena.",
+    "difficulty": "TUTORIAL",
+    "giverNpc": "HELENA",
+    "requirements": {
+      "prevQuestId": "TUTORIAL_01_WELCOME"
+    },
+    "objective": {
+      "type": "MINE",
+      "item": "IRON",
+      "count": 10
+    },
+    "rewards": {
+      "credits": 200,
+      "serviceCredits": 10,
+      "xp": 100
+    },
+    "initialDialogue": {
+      "START": {
+        "text": "To survive on Mars, you need steel, and steel requires raw Iron. Take your extractor drone, scan the surrounding sectors using operations command, and harvest 10 units of raw Iron.",
+        "choices": [
+          { "text": "How do I mine?", "nextNode": "MINE_TUT" },
+          { "text": "I will get it done.", "nextNode": "ACCEPT_STAGE" }
+        ]
+      },
+      "MINE_TUT": {
+        "text": "Use your OPERATIONS COMMAND panel. Claim a surrounding resource sector containing Iron, launch your drone, and wait for the extraction cycle to complete. Remember, claiming a sector requires 10 Service Credits, but you have 50 in your starting balance.",
+        "choices": [
+          { "text": "Understood. I will start.", "nextNode": "ACCEPT_STAGE" }
+        ]
+      },
+      "ACCEPT_STAGE": {
+        "text": "The furnaces are cold. Do not return empty-handed.",
+        "choices": [
+          { "text": "[ACCEPT CONTRACT] Start mining.", "nextNode": "CLOSE", "trigger": "ACCEPT_QUEST" }
+        ]
+      }
+    },
+    "progressDialogue": {
+      "START": {
+        "text": "You have only mined {progress} of 10 Iron. Return to operations command and finish the harvest.",
+        "choices": [
+          { "text": "[Disconnect]", "nextNode": "CLOSE", "trigger": "CLOSE_DIALOGUE" }
+        ]
+      }
+    },
+    "completedDialogue": {
+      "START": {
+        "text": "Ah, the haul is here. Let me check the purity... Yes, this will smelt nicely. You can follow instructions after all.",
+        "choices": [
+          { "text": "[COMPLETE CONTRACT] Deliver 10 Iron.", "nextNode": "FINISH", "trigger": "COMPLETE_QUEST" }
+        ]
+      },
+      "FINISH": {
+        "text": "I have credited 200 Credits and 10 Service Credits to your account. Next, we will discuss how to smelt this raw metal into plating. Speak to me again when you are ready.",
+        "choices": [
+          { "text": "[Disconnect]", "nextNode": "CLOSE", "trigger": "CLOSE_DIALOGUE" }
+        ]
+      }
+    }
+  }
+]

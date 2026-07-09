@@ -1,15 +1,9 @@
-/**
- * Headquarters Scene Component
- * 
- * Main 3D scene for the outside HQ environment using React Three Fiber.
- * Renders procedural crater terrain, bunker exterior, vehicles, and harsh lighting.
- */
-
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics, RigidBody, MeshCollider } from '@react-three/rapier';
-import { Environment, useGLTF } from '@react-three/drei';
+import { Environment, useGLTF, Html } from '@react-three/drei';
 import PlayerController from './PlayerController';
+import PlayerModel from './PlayerModel';
 import MartianTerrain from './MartianTerrain';
 import MartianLighting from './MartianLighting';
 import { useEditorStore } from '../../services/EditorStore';
@@ -126,7 +120,6 @@ function ForgeBuilding() {
   );
 }
 
-
 export default function HeadquartersScene() {
   const { isEditorMode, toggleEditorMode, playerCoords } = useEditorStore();
   const [copied, setCopied] = React.useState(false);
@@ -169,8 +162,11 @@ export default function HeadquartersScene() {
             <RefineryBuilding />
             <ForgeBuilding />
 
-            {/* Player */}
-            <PlayerController spawnPosition={[-6.06, 2, -5]}/>
+            {/* Local Player */}
+            <PlayerController
+              spawnPosition={[-6.06, 2, -5]}
+            />
+
             {/* Environment map for realistic PBR reflections */}
             <Environment preset="sunset" background={false} />
           </Physics>

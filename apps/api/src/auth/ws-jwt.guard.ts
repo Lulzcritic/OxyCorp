@@ -23,8 +23,11 @@ export class WsJwtGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET || 'super-secret-jwt-key', // fallback for dev
       });
-      // Attach user to socket
-      (client as any).user = payload;
+      // Attach user to socket with mapped userId
+      (client as any).user = {
+        ...payload,
+        userId: payload.sub,
+      };
       return true;
     } catch {
       throw new UnauthorizedException('Invalid token');

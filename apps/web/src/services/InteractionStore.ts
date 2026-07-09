@@ -18,9 +18,15 @@ interface InteractionState {
   onInteract?: () => void;
   /** Whether player movement is currently locked (terminal open) */
   movementLocked: boolean;
+  /** Currently selected NPC ID in conversations */
+  activeNpcId: string | null;
+  /** Whether a 3D overlay dialogue is active */
+  isDialogueActive: boolean;
 
   setHovered: (terminalType: string | null, label: string | null, inRange: boolean, onInteract?: () => void) => void;
   setMovementLocked: (locked: boolean) => void;
+  setActiveNpcId: (id: string | null) => void;
+  setDialogueActive: (active: boolean) => void;
 }
 
 export const useInteractionStore = create<InteractionState>((set) => ({
@@ -29,6 +35,8 @@ export const useInteractionStore = create<InteractionState>((set) => ({
   inRange: false,
   movementLocked: false,
   onInteract: undefined,
+  activeNpcId: null,
+  isDialogueActive: false,
 
   setHovered: (terminalType, label, inRange, onInteract) => {
     set({ hoveredTerminal: terminalType, hoveredLabel: label, inRange, onInteract });
@@ -36,5 +44,13 @@ export const useInteractionStore = create<InteractionState>((set) => ({
 
   setMovementLocked: (locked) => {
     set({ movementLocked: locked });
+  },
+
+  setActiveNpcId: (id) => {
+    set({ activeNpcId: id });
+  },
+
+  setDialogueActive: (active) => {
+    set({ isDialogueActive: active, movementLocked: active });
   },
 }));

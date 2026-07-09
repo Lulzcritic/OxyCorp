@@ -5,12 +5,13 @@ import '../styles/grimdark-theme.css';
 interface Sector {
   x: string;
   y: string;
-  type: 'BUNKER' | 'RESOURCE' | 'EMPTY';
+  type: 'BUNKER' | 'RESOURCE' | 'EMPTY' | 'TOWN';
   id: string;
   ownerId?: string;
   resources?: { type: string; quantity: number; richness: number };
   hasOutpost?: boolean;
 }
+
 
 interface MapGridProps {
   initialCenterX: string;
@@ -64,7 +65,7 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
       const cellY = centerY + BigInt(dy);
       
       const sector = sectors.find(
-        (s) => s.x === cellX.toString() && s.y === cellY.toString()
+        (s) => String(s.x) === String(cellX) && String(s.y) === String(cellY)
       );
 
       gridCells.push({
@@ -85,6 +86,8 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
     switch (sector.type) {
       case 'BUNKER':
         return '#00CC6640';
+      case 'TOWN':
+        return '#00F3FF30';
       case 'RESOURCE':
         return '#FFA50040';
       case 'EMPTY':
@@ -98,6 +101,8 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
     switch (sector.type) {
       case 'BUNKER':
         return '#00CC66';
+      case 'TOWN':
+        return '#00F3FF';
       case 'RESOURCE':
         return '#FFA500';
       case 'EMPTY':
@@ -196,6 +201,9 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
                 {cell.sector?.type === 'BUNKER' && cell.sector.ownerId === currentUserId && (
                   <div style={{ position: 'absolute', bottom: 1, right: 2, fontSize: '9px', color: '#00FF9D' }}>HQ</div>
                 )}
+                {cell.sector?.type === 'TOWN' && (
+                  <div style={{ position: 'absolute', bottom: 1, right: 2, fontSize: '8px', color: '#00F3FF', fontWeight: 'bold' }}>TOWN</div>
+                )}
                 {cell.sector?.hasOutpost && (
                   <div style={{ position: 'absolute', top: 1, right: 2, fontSize: '9px', color: '#FFA500' }}>⚡</div>
                 )}
@@ -211,6 +219,7 @@ export default function MapGrid({ initialCenterX, initialCenterY, onSelectSector
       {/* Legend */}
       <div style={{ display: 'flex', gap: 15, marginTop: 10, fontSize: '0.85rem', color: '#555' }}>
         <span><span style={{ color: '#00CC66' }}>■</span> BUNKER</span>
+        <span><span style={{ color: '#00F3FF' }}>■</span> TOWN</span>
         <span><span style={{ color: '#FFA500' }}>■</span> RESOURCE</span>
         <span><span style={{ color: '#2A2A2A' }}>■</span> EMPTY</span>
         <span><span style={{ color: '#00F3FF' }}>□</span> OWNED</span>

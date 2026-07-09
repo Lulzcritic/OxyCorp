@@ -97,6 +97,9 @@ export class AuthService {
       },
     });
 
+    // Generate surrounding territory
+    await this.mapSpawningService.generateSectorsAroundBunker(user.id, 3);
+
     // Generate tokens
     const tokens = await this.generateTokens(user.id, email, username);
 
@@ -253,6 +256,9 @@ export class AuthService {
             },
           },
         });
+
+        // Generate surrounding territory
+        await this.mapSpawningService.generateSectorsAroundBunker(user.id, 3);
       }
     }
 

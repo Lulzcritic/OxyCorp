@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react';
 import { useTerminalStore } from '../../services/TerminalManager';
-import TerminalRouter from './TerminalRouter';
+import Dashboard from '../Dashboard';
 
 export default function TerminalOverlay() {
   const { isOpen, closeTerminal } = useTerminalStore();
@@ -31,7 +31,7 @@ export default function TerminalOverlay() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Terminal Interface"
+      aria-label="Terminal OS Interface"
       style={{
         position: 'fixed',
         top: 0,
@@ -54,7 +54,6 @@ export default function TerminalOverlay() {
     >
       <style>
         {`
-
           @keyframes crtPowerOn {
             0% {
               transform: scaleY(0.005) scaleX(0.3);
@@ -81,7 +80,7 @@ export default function TerminalOverlay() {
           width: '95vw',
           height: '95vh',
           maxWidth: '1600px',
-          background: '#1C1C1C',
+          background: '#070708',
           border: '2px solid #00FF9D',
           boxShadow: '0 0 20px rgba(0, 255, 157, 0.15)',
           overflow: 'hidden',
@@ -90,7 +89,7 @@ export default function TerminalOverlay() {
           transformOrigin: 'center center',
         }}
       >
-        <TerminalRouter />
+        <Dashboard />
       </div>
     </div>
   );

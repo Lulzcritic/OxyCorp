@@ -56,6 +56,9 @@ export class UserService {
       },
     });
 
+    // Generate surrounding territory
+    await this.mapSpawningService.generateSectorsAroundBunker(userId, 3);
+
     return { message: 'User created', user: newUser };
   }
 

@@ -3,6 +3,7 @@ export enum ItemType {
   EQUIPMENT = 'EQUIPMENT',
   DRONE = 'DRONE',
   HARD_DRIVE = 'HARD_DRIVE',
+  CARTRIDGE = 'CARTRIDGE',
 }
 
 export interface EquipmentModifiers {
@@ -31,9 +32,11 @@ export const ITEMS_REGISTRY: Record<string, ItemDefinition> = {
   CRUDE_FUEL: { id: 'CRUDE_FUEL', name: 'Crude Fuel', type: ItemType.RESOURCE },
 
   // Drones
-  DRONE_ATTACK_V1: { id: 'DRONE_ATTACK_V1', name: 'Wasp I', type: ItemType.DRONE },
-  DRONE_DEFENSE_V1: { id: 'DRONE_DEFENSE_V1', name: 'Guardian I', type: ItemType.DRONE },
-  DRONE_SPEED_V1: { id: 'DRONE_SPEED_V1', name: 'Runner I', type: ItemType.DRONE },
+  DRONE_GUARDIAN: { id: 'DRONE_GUARDIAN', name: 'Guardian I', type: ItemType.DRONE },
+  DRONE_CARRIER: { id: 'DRONE_CARRIER', name: 'Carrier I', type: ItemType.DRONE },
+  DRONE_KAMIKAZE: { id: 'DRONE_KAMIKAZE', name: 'Kamikaze I', type: ItemType.DRONE },
+  DRONE_JAMMER: { id: 'DRONE_JAMMER', name: 'Jammer I', type: ItemType.DRONE },
+  DRONE_COMMANDO: { id: 'DRONE_COMMANDO', name: 'Commando I', type: ItemType.DRONE },
 
   // Equipment
   NEURAL_RIG_V1: {
@@ -75,5 +78,15 @@ export const ITEMS_REGISTRY: Record<string, ItemDefinition> = {
     name: 'Encrypted Hard Drive: Auto-Cannon V1 Blueprint',
     type: ItemType.HARD_DRIVE,
     blueprintRecipeId: 'CRAFT_AUTO_CANNON_V1'
+  },
+  CARTRIDGE_BLANK: {
+    id: 'CARTRIDGE_BLANK',
+    name: 'Blank Cartridge',
+    type: ItemType.RESOURCE
+  },
+  CARTRIDGE_PROGRAMMED: {
+    id: 'CARTRIDGE_PROGRAMMED',
+    name: 'Programmed AI Cartridge',
+    type: ItemType.CARTRIDGE
   }
 };

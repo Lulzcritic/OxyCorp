@@ -23,6 +23,7 @@ enum SectorType {
   BUNKER
   RESOURCE
   POI
+  TOWN
 }
 
 model Sector {
@@ -36,6 +37,7 @@ model Sector {
   jobs      Job[]
 
   owner    User?      @relation(fields: [ownerId], references: [id])
+  battles   Battle[]
 
   @@unique([x, y])
   @@map("sectors")
@@ -53,6 +55,7 @@ model User {
   specialization String?     // MVP: 'COGITATOR' | 'FORGE' | 'MERCHANT' | null
   xp             BigInt      @default(0)
   skillPoints    Int         @default(0) @map("skill_points")
+  serviceCredits Int         @default(50) @map("service_credits")
   equipment      Json?       // e.g. { head: "itemId", body: "itemId", weapon: "itemId" }
   blueprints     Json?       // e.g. ["CRAFT_EXOSUIT_V1"]
   createdAt      DateTime    @default(now())
@@ -67,6 +70,11 @@ model User {
   quests           Quest[]
   userSkills       UserSkills[]
   townSnapshot     TownSnapshot?
+  cartridges       Cartridge[]
+  seasonStats      UserSeasonStats[]
+  questStates      UserQuestState[]
+  attackerBattles  Battle[]            @relation("AttackerBattles")
+  defenderBattles  Battle[]            @relation("DefenderBattles")
 
   @@map("users")
 }
@@ -85,30 +93,34 @@ model UserSkills {
 }
 
 model Swarm {
-  id        String   @id @default(uuid())
-  userId    String
-  name      String
-  formation Json
-  isActive  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String     @id @default(uuid())
+  userId      String
+  name        String
+  formation   Json
+  isActive    Boolean    @default(false)
+  cartridgeId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+  cartridge   Cartridge? @relation(fields: [cartridgeId], references: [id])
 
   @@map("swarms")
 }
 
 model MarketListing {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   sellerId     String
   itemId       String
+  cartridgeId  String?
   quantity     BigInt
   pricePerUnit BigInt
-  isBuyOrder   Boolean  @default(false)
+  isBuyOrder   Boolean    @default(false)
   expiresAt    DateTime
-  createdAt    DateTime @default(now())
+  createdAt    DateTime   @default(now())
 
-  seller       User     @relation(fields: [sellerId], references: [id])
+  seller       User       @relation(fields: [sellerId], references: [id])
+  cartridge    Cartridge? @relation(fields: [cartridgeId], references: [id])
 
   @@map("market_listings")
 }
@@ -241,6 +253,111 @@ model GameTick {
   id        Int      @id @default(1)
   current   Int      @default(0)
   lastTick  DateTime @default(now())
+  season    Int      @default(1)
 
   @@map("game_ticks")
+}
+
+model Cartridge {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  bytecode  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  swarms    Swarm[]
+  listings  MarketListing[]
+
+  @@map("cartridges")
+}
+
+model UserSeasonStats {
+  id        String   @id @default(uuid())
+  userId    String
+  season    Int      @default(1)
+  credits   BigInt   @default(0)
+  sectors   Int      @default(0)
+  wins      Int      @default(0)
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, season])
+  @@map("user_season_stats")
+}
+
+model GlobalEvent {
+  id          String   @id @default(uuid())
+  eventType   String   @map("event_type")
+  eventName   String   @map("event_name")
+  description String
+  effects     Json     @default("{}")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("global_events")
+}
+
+enum QuestDifficulty {
+  TUTORIAL
+  DAILY
+  SEASONAL
+}
+
+model NPCQuest {
+  id                String          @id
+  title             String
+  description       String
+  difficulty        QuestDifficulty @default(SEASONAL)
+  giverNpc          String          @map("giver_npc") // e.g. "DECIMUS", "HELENA", "ARBITRE_01", "V_45", "KAELEN"
+  requirements      Json?           // e.g. { level: number, prevQuestId: string }
+  objective         Json            // e.g. { type: "MINE", item: "IRON", count: 100 } or { type: "TALK_TO", npcId: "HELENA" }
+  rewards           Json            // e.g. { credits: 500, serviceCredits: 20 }
+  initialDialogue   Json            @map("initial_dialogue")   // Dialogue tree when starting the quest
+  progressDialogue  Json?           @map("progress_dialogue")  // Dialogue tree when talking during quest
+  completedDialogue Json            @map("completed_dialogue") // Dialogue tree when finishing the quest
+
+  userProgress      UserQuestState[]
+
+  @@map("npc_quests")
+}
+
+model UserQuestState {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  questId     String      @map("quest_id")
+  currentStep String      @default("START") @map("current_step")
+  progress    Int         @default(0)
+  status      QuestStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user  User     @relation(fields: [userId], references: [id])
+  quest NPCQuest @relation(fields: [questId], references: [id])
+
+  @@unique([userId, questId])
+  @@map("user_quest_states")
+}
+
+enum BattleStatus {
+  PENDING
+  RESOLVED
+}
+
+model Battle {
+  id          String       @id @default(uuid())
+  attackerId  String       @map("attacker_id")
+  defenderId  String?      @map("defender_id")
+  sectorId    String       @map("sector_id")
+  status      BattleStatus @default(PENDING)
+  startTick   Int          @map("start_tick")
+  resolveTick Int          @map("resolve_tick")
+  battleLog   Json?        @map("battle_log")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  attacker    User         @relation("AttackerBattles", fields: [attackerId], references: [id])
+  defender    User?        @relation("DefenderBattles", fields: [defenderId], references: [id])
+  sector      Sector       @relation(fields: [sectorId], references: [id])
+
+  @@map("battles")
 }

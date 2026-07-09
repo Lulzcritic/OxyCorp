@@ -46,9 +46,13 @@ function playBeep(frequency: number, duration: number) {
 
 interface PlayerControllerProps {
   spawnPosition?: [number, number, number];
+  onMove?: (posX: number, posY: number, posZ: number, rotY: number) => void;
 }
 
-export default function PlayerController({ spawnPosition = [-6.23, 3, -39.39] }: PlayerControllerProps = {}) {
+export default function PlayerController({
+  spawnPosition = [-6.23, 3, -39.39],
+  onMove,
+}: PlayerControllerProps = {}) {
   const rigidBodyRef = useRef<any>(null);
   const controlsRef = useRef<any>(null);
   const playerModelRef = useRef<THREE.Group>(null);
@@ -271,6 +275,11 @@ export default function PlayerController({ spawnPosition = [-6.23, 3, -39.39] }:
     const updatedPos = new Vector3(updatedTranslation.x, updatedTranslation.y, updatedTranslation.z);
     const playerDelta = updatedPos.clone().sub(lastPlayerPos.current);
     lastPlayerPos.current.copy(updatedPos);
+
+    if (onMove && (playerDelta.lengthSq() > 0.00001 || keysPressed.current.forward || keysPressed.current.backward || keysPressed.current.left || keysPressed.current.right)) {
+      const rotY = playerModelRef.current ? playerModelRef.current.rotation.y : 0;
+      onMove(updatedTranslation.x, updatedTranslation.y - 1.0, updatedTranslation.z, rotY);
+    }
 
     if (controlsRef.current) {
       if (playerDelta.lengthSq() > 0.00001) {

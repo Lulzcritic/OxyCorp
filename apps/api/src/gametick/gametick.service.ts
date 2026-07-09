@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MapService } from '../map/map.service';
+import { CombatService } from '../combat/combat.service';
 
 const TICK_DURATION_MS = 3600000; // 1 hour
 
@@ -12,6 +13,7 @@ export class GameTickService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private prisma: PrismaService,
     private mapService: MapService,
+    private combatService: CombatService,
   ) {}
 
   async onModuleInit() {
@@ -55,7 +57,7 @@ export class GameTickService implements OnModuleInit, OnModuleDestroy {
   }
 
   async triggerTick() {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const tick = await tx.gameTick.findUnique({
         where: { id: 1 },
       });
@@ -73,28 +75,71 @@ export class GameTickService implements OnModuleInit, OnModuleDestroy {
       // Trigger hourly resources regeneration
       const regenCount = await this.mapService.regenerateResources();
 
-      this.logger.log(
-        `[TICK TRIGGERED] Tick #${nextTick} at ${now.toISOString()}. Regenerated ${regenCount} sectors.`
-      );
-
       return {
         tick: nextTick,
         timestamp: now,
         regeneratedSectors: regenCount,
       };
     });
+
+    // Process pending battles outside the transaction to avoid locking tables
+    try {
+      await this.combatService.processPendingBattles(result.tick);
+    } catch (err) {
+      this.logger.error(`Failed to process pending battles for tick ${result.tick}:`, err);
+    }
+
+    this.logger.log(
+      `[TICK TRIGGERED] Tick #${result.tick} at ${result.timestamp.toISOString()}. Regenerated ${result.regeneratedSectors} sectors.`
+    );
+
+    return result;
   }
 
   async getTickStatus() {
-    const tick = await this.prisma.gameTick.findUnique({
+    let tick = await this.prisma.gameTick.findUnique({
       where: { id: 1 },
     });
 
-    const current = tick ? tick.current : 0;
-    const lastTick = tick ? tick.lastTick : new Date();
-    
+    if (!tick) {
+      tick = await this.prisma.gameTick.create({
+        data: { id: 1, current: 0, lastTick: new Date() },
+      });
+    }
+
+    let current = tick.current;
+    let lastTick = tick.lastTick;
+    const now = new Date();
+
+    // Catch up on missed ticks if the server was offline or idle
+    const timeElapsed = now.getTime() - lastTick.getTime();
+    if (timeElapsed >= TICK_DURATION_MS) {
+      const missedTicks = Math.floor(timeElapsed / TICK_DURATION_MS);
+      const nextTick = current + missedTicks;
+      const newLastTick = new Date(lastTick.getTime() + missedTicks * TICK_DURATION_MS);
+
+      const updatedTick = await this.prisma.gameTick.update({
+        where: { id: 1 },
+        data: {
+          current: nextTick,
+          lastTick: newLastTick,
+        }
+      });
+
+      // Trigger resource regeneration for the caught-up duration
+      try {
+        await this.mapService.regenerateResources();
+      } catch (err) {
+        this.logger.error('Failed to regenerate resources during tick catch-up:', err);
+      }
+
+      current = updatedTick.current;
+      lastTick = updatedTick.lastTick;
+      this.logger.log(`[CATCH-UP] Advanced ${missedTicks} ticks. Current tick: #${current}.`);
+    }
+
     const nextTickTime = lastTick.getTime() + TICK_DURATION_MS;
-    const msRemaining = Math.max(0, nextTickTime - Date.now());
+    const msRemaining = Math.max(0, nextTickTime - now.getTime());
 
     const martianDate = convertTicksToMartianDate(current);
 

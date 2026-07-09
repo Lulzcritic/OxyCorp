@@ -57,7 +57,19 @@ export class RefiningService {
       // "Queue up a refining job" -> Singular.
       // Let's make it one job record representing the batch.
       
-      const totalDuration = recipe.durationSeconds * batches;
+      const activeEvent = await tx.globalEvent.findFirst({
+        where: { active: true },
+      });
+
+      let durationMultiplier = 1.0;
+      if (activeEvent && typeof activeEvent.effects === 'object' && activeEvent.effects !== null) {
+        const effects = activeEvent.effects as Record<string, any>;
+        if (typeof effects.refiningDurationMultiplier === 'number') {
+          durationMultiplier = effects.refiningDurationMultiplier;
+        }
+      }
+
+      const totalDuration = Math.round(recipe.durationSeconds * batches * durationMultiplier);
 
       return tx.job.create({
         data: {

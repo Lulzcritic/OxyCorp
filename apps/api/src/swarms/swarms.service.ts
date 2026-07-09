@@ -2,10 +2,10 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BunkerService } from '../bunker/bunker.service';
 
-interface DronePosition {
+export interface SwarmSlot {
   droneId: string;
-  x: number;
-  y: number;
+  slotIndex: number;
+  count: number;
 }
 
 @Injectable()
@@ -15,28 +15,39 @@ export class SwarmsService {
     private bunkerService: BunkerService,
   ) {}
 
-  async saveSwarm(userId: string, name: string, formation: DronePosition[]) {
+  async saveSwarm(userId: string, name: string, formation: SwarmSlot[], cartridgeId?: string | null) {
+    // 1. Validate formation slot configuration
+    const seenSlots = new Set<number>();
+    let totalDronesCount = 0;
+    
+    for (const slot of formation) {
+      if (slot.slotIndex < 0 || slot.slotIndex > 4) {
+        throw new BadRequestException('Slot index must be between 0 and 4');
+      }
+      if (seenSlots.has(slot.slotIndex)) {
+        throw new BadRequestException(`Duplicate entry for slot index ${slot.slotIndex}`);
+      }
+      seenSlots.add(slot.slotIndex);
+
+      if (slot.count < 1 || slot.count > 10) {
+        throw new BadRequestException('Count per slot must be between 1 and 10');
+      }
+      totalDronesCount += slot.count;
+    }
+
     // 0. Check Max Drone Count (Facility Gate)
     const maxDrones = await this.bunkerService.getMaxDroneCount(userId);
-    if (formation.length > maxDrones) {
+    if (totalDronesCount > maxDrones) {
       throw new BadRequestException(
-        `Max ${maxDrones} drones allowed. Upgrade COMMAND_ARRAY for more.`,
+        `Max ${maxDrones} drones allowed. Upgrade COMMAND_ARRAY for more. (Current total: ${totalDronesCount})`,
       );
     }
 
-    // 1. Validate Grid Bounds (5x5)
-    for (const pos of formation) {
-      if (pos.x < 0 || pos.x > 4 || pos.y < 0 || pos.y > 4) {
-        throw new BadRequestException('Drone position out of bounds (0-4)');
-      }
-    }
-
     // 2. Validate Ownership (Inventory Check)
-    // Aggregate counts needed per drone type
     const neededCounts = new Map<string, number>();
-    for (const pos of formation) {
-      const current = neededCounts.get(pos.droneId) || 0;
-      neededCounts.set(pos.droneId, current + 1);
+    for (const slot of formation) {
+      const current = neededCounts.get(slot.droneId) || 0;
+      neededCounts.set(slot.droneId, current + slot.count);
     }
 
     // Fetch User Inventory
@@ -61,17 +72,6 @@ export class SwarmsService {
     }
 
     // 3. Persist Swarm
-    // We update if exists by name/user or create new.
-    // Logic: If ID is provided update, else create?
-    // Simplified: Find one by name or create
-    // Actually, "War Room" usually implies ONE active configuration or a list.
-    // Let's assume we Upsert based on Name for this user to keep it simple, or just Create.
-    // Story says "Upsert Swarm record". Let's use name as unique key for user conceptually?
-    // Or just create a new one every time? No, "Configure" implies editing.
-    // Let's assume we are editing the "Primary" swarm or a swarm by specific ID.
-    // The payload didn't explicitly ask for ID. Let's assume "Default Swarm" if no name provided or match by Name.
-
-    // Better approach: Find existing swarm by name+user, update it. If not, create.
     const existingSwarm = await this.prisma.swarm.findFirst({
       where: { userId, name },
     });
@@ -79,7 +79,10 @@ export class SwarmsService {
     if (existingSwarm) {
       return this.prisma.swarm.update({
         where: { id: existingSwarm.id },
-        data: { formation: JSON.parse(JSON.stringify(formation)) }, // Ensure valid JSON
+        data: {
+          formation: JSON.parse(JSON.stringify(formation)),
+          cartridgeId: cartridgeId || null,
+        },
       });
     } else {
       return this.prisma.swarm.create({
@@ -88,6 +91,7 @@ export class SwarmsService {
           name,
           formation: JSON.parse(JSON.stringify(formation)),
           isActive: true,
+          cartridgeId: cartridgeId || null,
         },
       });
     }

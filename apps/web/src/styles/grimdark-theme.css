@@ -8,7 +8,7 @@
 /* ==========================================
    FONTS
    ========================================== */
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Share+Tech+Mono&display=swap');
 
 /* ==========================================
    CSS CUSTOM PROPERTIES (COLOR PALETTE)
@@ -47,7 +47,7 @@
   --gd-glow-red: 0 0 5px rgba(204, 0, 0, 0.4);
 
   /* Typography */
-  --gd-font-primary: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
+  --gd-font-primary: 'Outfit', 'Segoe UI', -apple-system, sans-serif;
   --gd-font-mono: 'Share Tech Mono', 'Courier New', monospace;
   --gd-letter-spacing: 0.1em;
   --gd-line-height: 1.4;
@@ -86,8 +86,8 @@
   z-index: 9999;
   background: repeating-linear-gradient(
     0deg,
-    rgba(0, 0, 0, 0.15) 0px,
-    rgba(0, 0, 0, 0.15) 1px,
+    rgba(0, 0, 0, 0.02) 0px,
+    rgba(0, 0, 0, 0.02) 1px,
     transparent 1px,
     transparent 3px
   );

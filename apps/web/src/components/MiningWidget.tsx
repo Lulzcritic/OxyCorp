@@ -79,6 +79,7 @@ export default function MiningWidget({ selectedSector, currentUserId, onJobCompl
       const xpMsg = data.xpAwarded ? ` | +${data.xpAwarded} XP` : ''
       const levelMsg = data.levelUp ? ` | 🎉 LEVEL UP! Now Lvl ${data.newLevel}` : ''
       alert(`Success: +10 Iron Ore Claimed!${xpMsg}${levelMsg}`)
+      window.dispatchEvent(new CustomEvent('inventory-updated'));
       if (onJobComplete) onJobComplete();
     } else {
       const err = await res.json()
